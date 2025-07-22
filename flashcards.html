@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flashcards - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <style>
+      body {
+        background: #fff8e1;
+        color: #4a3c1a;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        padding: 30px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .container {
+        max-width: 700px;
+        width: 100%;
+        background: #fffbe6;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 0 25px rgba(234, 174, 0, 0.3);
+        text-align: center;
+      }
+
+      h1 {
+        color: #b27000;
+        margin-bottom: 30px;
+        text-shadow: 1px 1px 3px #f9d56e;
+        font-weight: 700;
+      }
+
+      #flashcard {
+        cursor: pointer;
+        padding: 60px 40px;
+        border: 3px solid #f4b400;
+        border-radius: 18px;
+        background: #fff9db;
+        color: #5a3e00;
+        font-size: 2.2em;
+        font-weight: 700;
+        user-select: none;
+        box-shadow: 0 4px 15px #f9d56e88;
+        margin-bottom: 25px;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: box-shadow 0.3s ease, transform 0.4s ease;
+      }
+      #flashcard:hover {
+        box-shadow: 0 6px 22px #f9d56ecc;
+        transform: scale(1.04);
+      }
+
+      .nav-buttons {
+        margin-bottom: 10px;
+      }
+
+      .nav-buttons button {
+        background-color: #f4b400;
+        border: none;
+        color: #5a3e00;
+        padding: 14px 28px;
+        font-size: 1.2em;
+        border-radius: 12px;
+        cursor: pointer;
+        margin: 0 12px;
+        font-weight: 700;
+        box-shadow: 0 4px 10px #f4b400cc;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        user-select: none;
+      }
+      .nav-buttons button:disabled {
+        background-color: #d9c97d;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .nav-buttons button:hover:not(:disabled) {
+        background-color: #f9d56e;
+        box-shadow: 0 6px 14px #f9d56ecc;
+      }
+
+      #backBtn {
+        align-self: flex-start;
+        margin-bottom: 30px;
+        background-color: transparent;
+        border: none;
+        color: #b27000;
+        font-weight: 700;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: color 0.3s ease;
+        user-select: none;
+      }
+      #backBtn:hover {
+        color: #f4b400;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <button id="backBtn">← Back to Notes</button>
+      <h1>Flashcards</h1>
+
+      <div id="flashcard">Loading...</div>
+
+      <div class="nav-buttons">
+        <button id="prevBtn" disabled>← Previous</button>
+        <button id="nextBtn" disabled>Next →</button>
+      </div>
+    </div>
+
+    <script>
+      const backBtn = document.getElementById("backBtn");
+      const flashcardDiv = document.getElementById("flashcard");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+
+      backBtn.addEventListener("click", () => {
+        window.location.href = "/";
+      });
+
+      let flashcards = [];
+      let currentIndex = 0;
+      let showingDefinition = false;
+
+      function updateFlashcard() {
+        if (flashcards.length === 0) {
+          flashcardDiv.textContent = "No flashcards found.";
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        const card = flashcards[currentIndex];
+        flashcardDiv.textContent = showingDefinition
+          ? typeof card.definition === "string"
+            ? card.definition
+            : JSON.stringify(card.definition, null, 2)
+          : typeof card.term === "string"
+          ? card.term
+          : JSON.stringify(card.term);
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === flashcards.length - 1;
+      }
+
+      flashcardDiv.addEventListener("click", () => {
+        showingDefinition = !showingDefinition;
+        updateFlashcard();
+      });
+
+      prevBtn.addEventListener("click", () => {
+        if (currentIndex > 0) {
+          currentIndex--;
+          showingDefinition = false;
+          updateFlashcard();
+        }
+      });
+
+      nextBtn.addEventListener("click", () => {
+        if (currentIndex < flashcards.length - 1) {
+          currentIndex++;
+          showingDefinition = false;
+          updateFlashcard();
+        }
+      });
+
+      async function loadFlashcards() {
+        const notes = sessionStorage.getItem("processedNotes");
+        if (!notes) {
+          alert(
+            "No processed notes found! Please enter and process notes first."
+          );
+          window.location.href = "/";
+          return;
+        }
+
+        flashcardDiv.textContent = "Loading flashcards...";
+
+        try {
+          const res = await fetch("/api/flashcards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes }),
+          });
+          if (!res.ok) throw new Error("Failed to fetch flashcards.");
+          const data = await res.json();
+
+          // Convert the returned object to array of {term, definition}
+          flashcards = Object.entries(data).map(([term, definition]) => ({
+            term,
+            definition,
+          }));
+
+          if (flashcards.length === 0) {
+            flashcardDiv.textContent = "No flashcards generated.";
+          } else {
+            currentIndex = 0;
+            showingDefinition = false;
+            updateFlashcard();
+          }
+        } catch (err) {
+          flashcardDiv.textContent = `Error: ${err.message}`;
+        }
+      }
+
+      window.onload = loadFlashcards;
+    </script>
+  </body>
+</html>
