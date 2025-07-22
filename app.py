@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file
 from io import BytesIO
 from fpdf import FPDF
-import openaikey
 from openai import OpenAI
 import re
 import os
@@ -11,7 +10,8 @@ import certifi
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key)
 
 
 @app.route('/')
