@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Practice Paper - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Practice Paper</h1>
+      <button id="backBtn">← Back to Notes</button>
+      <div id="loadingIndicator" class="loading-hidden">
+        <div class="spinner"></div>
+        <p>Generating practice paper...</p>
+      </div>
+      <main id="mainContent"></main>
+    </div>
+
+    <script>
+      const mainContent = document.getElementById("mainContent");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const backBtn = document.getElementById("backBtn");
+
+      backBtn.addEventListener("click", () => {
+        window.location.href = "/";
+      });
+
+      function showLoading() {
+        loadingIndicator.classList.add("visible");
+      }
+      function hideLoading() {
+        loadingIndicator.classList.remove("visible");
+      }
+
+      async function loadPastpaper() {
+        const notes = sessionStorage.getItem("processedNotes");
+        if (!notes) {
+          alert(
+            "No processed notes found! Please enter and process notes first."
+          );
+          window.location.href = "/";
+          return;
+        }
+
+        showLoading();
+
+        try {
+          const res = await fetch("/api/pastpaper", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes }),
+          });
+          if (!res.ok) throw new Error("Failed to generate practice paper");
+          const blob = await res.blob();
+          hideLoading();
+
+          // Display the PDF inline
+          const url = URL.createObjectURL(blob);
+          mainContent.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:none;"></iframe>`;
+        } catch (err) {
+          hideLoading();
+          mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+        }
+      }
+
+      window.onload = loadPastpaper;
+    </script>
+  </body>
+</html>

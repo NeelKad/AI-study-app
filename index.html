@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Study App - Enter Notes</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI Study App</h1>
+      <p class="tagline">
+        Paste your study notes below and click Process Notes:
+      </p>
+
+      <textarea
+        id="notesInput"
+        placeholder="Paste your study notes here..."
+      ></textarea>
+      <button id="processNotesBtn">Process Notes</button>
+
+      <div id="loadingIndicator" class="loading-hidden">
+        <div class="spinner"></div>
+        <p>Processing notes...</p>
+      </div>
+
+      <div id="actionButtons" class="hidden">
+        <p style="font-weight: bold; color: #b27000; margin-bottom: 15px">
+          Notes processed! Choose an action:
+        </p>
+        <button class="action-btn" data-target="/flashcards">Flashcards</button>
+        <button class="action-btn" data-target="/questions">
+          Question Generator
+        </button>
+        <button class="action-btn" data-target="/summarise">
+          Summarise Notes
+        </button>
+        <button class="action-btn" data-target="/pastpaper">
+          Generate Practice Paper
+        </button>
+        <button class="action-btn" data-target="/tutor">AI Study Tutor</button>
+      </div>
+    </div>
+
+    <script>
+      const notesInput = document.getElementById("notesInput");
+      const processNotesBtn = document.getElementById("processNotesBtn");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const actionButtons = document.getElementById("actionButtons");
+
+      function showLoading() {
+        loadingIndicator.classList.add("visible");
+      }
+      function hideLoading() {
+        loadingIndicator.classList.remove("visible");
+      }
+      function showActions() {
+        actionButtons.classList.remove("hidden");
+      }
+
+      processNotesBtn.addEventListener("click", () => {
+        const notes = notesInput.value.trim();
+        if (!notes) {
+          alert("Please enter some notes before processing.");
+          return;
+        }
+
+        // Disable input and button while processing
+        notesInput.disabled = true;
+        processNotesBtn.disabled = true;
+        showLoading();
+
+        // Simulate async processing (replace this with real API call)
+        setTimeout(() => {
+          hideLoading();
+
+          // Save notes to sessionStorage so other pages can access
+          sessionStorage.setItem("processedNotes", notes);
+
+          // Show the action buttons
+          showActions();
+        }, 1500);
+      });
+
+      // Handle clicking action buttons - navigate to the page
+      actionButtons.querySelectorAll("button.action-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = btn.getAttribute("data-target");
+          window.location.href = target;
+        });
+      });
+    </script>
+    <script
+      src="{{ url_for('static', filename='js/script.js') }}"
+      defer
+    ></script>
+  </body>
+</html>

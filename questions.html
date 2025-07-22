@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Questions - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Questions</h1>
+      <button id="backBtn">← Back to Notes</button>
+      <div id="loadingIndicator" class="loading-hidden">
+        <div class="spinner"></div>
+        <p>Loading questions...</p>
+      </div>
+      <main id="mainContent"></main>
+    </div>
+
+    <script>
+      const mainContent = document.getElementById("mainContent");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const backBtn = document.getElementById("backBtn");
+
+      backBtn.addEventListener("click", () => {
+        window.location.href = "/";
+      });
+
+      function showLoading() {
+        loadingIndicator.classList.add("visible");
+      }
+      function hideLoading() {
+        loadingIndicator.classList.remove("visible");
+      }
+
+      async function loadQuestions() {
+        const notes = sessionStorage.getItem("processedNotes");
+        if (!notes) {
+          alert(
+            "No processed notes found! Please enter and process notes first."
+          );
+          window.location.href = "/";
+          return;
+        }
+
+        showLoading();
+
+        try {
+          const res = await fetch("/api/questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes }),
+          });
+          if (!res.ok) throw new Error("Failed to fetch questions");
+          const data = await res.json();
+          hideLoading();
+
+          if (!data || data.length === 0) {
+            mainContent.innerHTML = "<p>No questions generated.</p>";
+            return;
+          }
+
+          displayQuestion(data);
+        } catch (err) {
+          hideLoading();
+          mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+        }
+      }
+
+      let questionsData = null;
+      let currentQuestionIndex = 0;
+
+      function displayQuestion(data) {
+        questionsData = data;
+        currentQuestionIndex = 0;
+        renderQuestion();
+      }
+
+      function renderQuestion() {
+        if (!questionsData || questionsData.length === 0) {
+          mainContent.innerHTML = "<p>No questions available.</p>";
+          return;
+        }
+
+        const container = document.createElement("div");
+
+        const questionText = document.createElement("div");
+        questionText.id = "questionText";
+        questionText.textContent = `Q${currentQuestionIndex + 1}: ${
+          questionsData[currentQuestionIndex]
+        }`;
+        container.appendChild(questionText);
+
+        const answerInput = document.createElement("textarea");
+        answerInput.id = "answerInput";
+        answerInput.placeholder = "Type your answer here...";
+        container.appendChild(answerInput);
+
+        const gradeBtn = document.createElement("button");
+        gradeBtn.id = "gradeBtn";
+        gradeBtn.textContent = "Grade My Answer";
+        container.appendChild(gradeBtn);
+
+        const feedbackDiv = document.createElement("div");
+        feedbackDiv.className = "feedback";
+        container.appendChild(feedbackDiv);
+
+        const navDiv = document.createElement("div");
+        navDiv.className = "nav-buttons";
+
+        const prevBtn = document.createElement("button");
+        prevBtn.textContent = "← Previous Question";
+        prevBtn.disabled = currentQuestionIndex === 0;
+
+        const nextBtn = document.createElement("button");
+        nextBtn.textContent = "Next Question →";
+        nextBtn.disabled = currentQuestionIndex === questionsData.length - 1;
+
+        navDiv.appendChild(prevBtn);
+        navDiv.appendChild(nextBtn);
+        container.appendChild(navDiv);
+
+        mainContent.innerHTML = "";
+        mainContent.appendChild(container);
+
+        gradeBtn.onclick = async () => {
+          const userAnswer = answerInput.value.trim();
+          if (!userAnswer) {
+            feedbackDiv.textContent = "Please enter an answer to grade.";
+            return;
+          }
+          feedbackDiv.textContent = "Grading...";
+
+          try {
+            const res = await fetch("/api/grade_question", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                question: questionsData[currentQuestionIndex],
+                answer: userAnswer,
+                notes: sessionStorage.getItem("processedNotes"),
+              }),
+            });
+            if (!res.ok) throw new Error("Grading failed.");
+            const data = await res.json();
+            feedbackDiv.innerHTML = `
+            <p><strong>Score:</strong> ${data.grade_score}/10</p>
+            <p><strong>Suggestion:</strong> ${data.improvement}</p>
+            <p><strong>Model Answer:</strong><br>${data.model_answer}</p>
+          `;
+          } catch (err) {
+            feedbackDiv.textContent = `Error: ${err.message}`;
+          }
+        };
+
+        prevBtn.onclick = () => {
+          if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            renderQuestion();
+          }
+        };
+
+        nextBtn.onclick = () => {
+          if (currentQuestionIndex < questionsData.length - 1) {
+            currentQuestionIndex++;
+            renderQuestion();
+          }
+        };
+      }
+
+      window.onload = loadQuestions;
+    </script>
+  </body>
+</html>

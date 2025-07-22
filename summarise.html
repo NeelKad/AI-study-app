@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Summary - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Summary</h1>
+      <button id="backBtn">← Back to Notes</button>
+      <div id="loadingIndicator" class="loading-hidden">
+        <div class="spinner"></div>
+        <p>Loading summary...</p>
+      </div>
+      <main id="mainContent"></main>
+    </div>
+
+    <script>
+      const mainContent = document.getElementById("mainContent");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const backBtn = document.getElementById("backBtn");
+
+      backBtn.addEventListener("click", () => {
+        window.location.href = "/";
+      });
+
+      function showLoading() {
+        loadingIndicator.classList.add("visible");
+      }
+      function hideLoading() {
+        loadingIndicator.classList.remove("visible");
+      }
+
+      async function loadSummary() {
+        const notes = sessionStorage.getItem("processedNotes");
+        if (!notes) {
+          alert(
+            "No processed notes found! Please enter and process notes first."
+          );
+          window.location.href = "/";
+          return;
+        }
+
+        showLoading();
+
+        try {
+          const res = await fetch("/api/summarise", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ notes }),
+          });
+          if (!res.ok) throw new Error("Failed to fetch summary");
+          const data = await res.json();
+          hideLoading();
+
+          if (!data.summary) {
+            mainContent.innerHTML = "<p>No summary generated.</p>";
+            return;
+          }
+
+          mainContent.innerHTML = `<h3>Summary:</h3><p>${data.summary}</p>`;
+        } catch (err) {
+          hideLoading();
+          mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+        }
+      }
+
+      window.onload = loadSummary;
+    </script>
+  </body>
+</html>
