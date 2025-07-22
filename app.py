@@ -11,7 +11,7 @@ import certifi
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 app = Flask(__name__)
-client = OpenAI(api_key=openaikey.key())
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @app.route('/')
