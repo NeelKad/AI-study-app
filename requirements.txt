@@ -3,3 +3,4 @@ openai==1.97.0
 fpdf==1.7.2
 certifi==2025.7.14
 gunicorn
+flask-login
