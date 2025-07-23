@@ -2,100 +2,121 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI Study App - Enter Notes</title>
+    <title>Enter New Note - AI Study App</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
+    <style>
+      /* Loading bar container */
+      #loadingBarContainer {
+        width: 100%;
+        height: 8px;
+        background: #f9d56e88;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 15px;
+        display: none;
+      }
+
+      /* Animated loading bar */
+      #loadingBar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(135deg, #f4b400, #f9d56e);
+        border-radius: 8px;
+        animation: loadingAnim 2s linear infinite;
+      }
+
+      @keyframes loadingAnim {
+        0% {
+          width: 0%;
+          left: 0%;
+        }
+        50% {
+          width: 80%;
+          left: 10%;
+        }
+        100% {
+          width: 0%;
+          left: 100%;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="container">
-      <h1>AI Study App</h1>
-      <p class="tagline">
-        Paste your study notes below and click Process Notes:
-      </p>
+    <div class="container" style="max-width: 700px">
+      <a href="{{ url_for('dashboard') }}" id="backBtn"
+        >&larr; Back to Dashboard</a
+      >
+      <h1>Enter New Note</h1>
 
-      <textarea
-        id="notesInput"
-        placeholder="Paste your study notes here..."
-      ></textarea>
-      <button id="processNotesBtn">Process Notes</button>
+      <form id="noteForm">
+        <input
+          type="text"
+          id="title"
+          name="title"
+          placeholder="Note Title"
+          required
+        />
+        <textarea
+          id="content"
+          name="content"
+          placeholder="Enter your notes here..."
+          required
+          rows="10"
+        ></textarea>
 
-      <div id="loadingIndicator" class="loading-hidden">
-        <div class="spinner"></div>
-        <p>Processing notes...</p>
-      </div>
+        <button type="submit" id="saveBtn">Save Note</button>
+      </form>
 
-      <div id="actionButtons" class="hidden">
-        <p style="font-weight: bold; color: #b27000; margin-bottom: 15px">
-          Notes processed! Choose an action:
-        </p>
-        <button class="action-btn" data-target="/flashcards">Flashcards</button>
-        <button class="action-btn" data-target="/questions">
-          Question Generator
-        </button>
-        <button class="action-btn" data-target="/summarise">
-          Summarise Notes
-        </button>
-        <button class="action-btn" data-target="/pastpaper">
-          Generate Practice Paper
-        </button>
-        <button class="action-btn" data-target="/tutor">AI Study Tutor</button>
+      <div id="loadingBarContainer">
+        <div id="loadingBar"></div>
       </div>
     </div>
 
     <script>
-      const notesInput = document.getElementById("notesInput");
-      const processNotesBtn = document.getElementById("processNotesBtn");
-      const loadingIndicator = document.getElementById("loadingIndicator");
-      const actionButtons = document.getElementById("actionButtons");
+      const form = document.getElementById("noteForm");
+      const saveBtn = document.getElementById("saveBtn");
+      const loadingBarContainer = document.getElementById(
+        "loadingBarContainer"
+      );
 
-      function showLoading() {
-        loadingIndicator.classList.add("visible");
-      }
-      function hideLoading() {
-        loadingIndicator.classList.remove("visible");
-      }
-      function showActions() {
-        actionButtons.classList.remove("hidden");
-      }
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      processNotesBtn.addEventListener("click", () => {
-        const notes = notesInput.value.trim();
-        if (!notes) {
-          alert("Please enter some notes before processing.");
-          return;
+        // Show loading bar & disable button
+        loadingBarContainer.style.display = "block";
+        saveBtn.disabled = true;
+
+        const data = {
+          title: form.title.value.trim(),
+          content: form.content.value.trim(),
+        };
+
+        try {
+          const response = await fetch("/save-note", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (response.ok) {
+            // Redirect to dashboard after success
+            window.location.href = "/dashboard";
+          } else {
+            alert("Failed to save note. Please try again.");
+          }
+        } catch (err) {
+          alert("Error saving note. Please check your connection.");
+        } finally {
+          // Hide loading bar & enable button if still on page
+          loadingBarContainer.style.display = "none";
+          saveBtn.disabled = false;
         }
-
-        // Disable input and button while processing
-        notesInput.disabled = true;
-        processNotesBtn.disabled = true;
-        showLoading();
-
-        // Simulate async processing (replace this with real API call)
-        setTimeout(() => {
-          hideLoading();
-
-          // Save notes to sessionStorage so other pages can access
-          sessionStorage.setItem("processedNotes", notes);
-
-          // Show the action buttons
-          showActions();
-        }, 1500);
-      });
-
-      // Handle clicking action buttons - navigate to the page
-      actionButtons.querySelectorAll("button.action-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const target = btn.getAttribute("data-target");
-          window.location.href = target;
-        });
       });
     </script>
-    <script
-      src="{{ url_for('static', filename='js/script.js') }}"
-      defer
-    ></script>
   </body>
 </html>

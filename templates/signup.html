@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sign Up - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container" style="max-width: 400px">
+      <h1 class="text-center">Sign Up</h1>
+
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <p
+        style="color: {% if category == 'error' %}#d14a4a{% else %}#4a7a4a{% endif %}; font-weight: 700; text-align: center;"
+      >
+        {{ message }}
+      </p>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <form method="POST" action="{{ url_for('signup') }}">
+        <input
+          type="text"
+          name="email"
+          placeholder="Email"
+          required
+          autofocus
+          autocomplete="email"
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          required
+          autocomplete="new-password"
+        />
+        <button type="submit">Create Account</button>
+      </form>
+
+      <p class="text-center" style="margin-top: 20px">
+        Already have an account?
+        <a
+          href="{{ url_for('login') }}"
+          style="color: #b27000; font-weight: 700; text-decoration: none"
+          >Login</a
+        >
+      </p>
+    </div>
+  </body>
+</html>

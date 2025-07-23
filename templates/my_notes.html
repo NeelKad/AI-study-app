@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>My Notes</title>
+  </head>
+  <body>
+    <h2>Your Notes</h2>
+    <ul>
+      {% for note in notes %}
+      <li>
+        <a href="{{ url_for('view_note', note_id=note[0]) }}">{{ note[1] }}</a>
+      </li>
+      {% else %}
+      <li>You have no saved notes.</li>
+      {% endfor %}
+    </ul>
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+  </body>
+</html>

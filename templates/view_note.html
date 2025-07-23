@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ title }} - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container" style="max-width: 700px">
+      <a href="{{ url_for('dashboard') }}" id="backBtn"
+        >&larr; Back to Dashboard</a
+      >
+
+      <h1>{{ title }}</h1>
+
+      <div
+        style="
+          white-space: pre-wrap;
+          background: #fff9db;
+          padding: 20px;
+          border-radius: 20px;
+          box-shadow: 0 0 35px rgba(234, 174, 0, 0.35);
+          color: #5a3e00;
+          font-weight: 600;
+          font-size: 1.1rem;
+          margin-bottom: 30px;
+        "
+      >
+        {{ content }}
+      </div>
+
+      <div id="actionButtons">
+        <p>Choose an action for this note:</p>
+        <button class="action-btn" onclick="navigateTo('flashcards')">
+          Flashcards
+        </button>
+        <button class="action-btn" onclick="navigateTo('questions')">
+          Question Generator
+        </button>
+        <button class="action-btn" onclick="navigateTo('summarise')">
+          Summarise Notes
+        </button>
+        <button class="action-btn" onclick="navigateTo('pastpaper')">
+          Generate Practice Paper
+        </button>
+        <button class="action-btn" onclick="navigateTo('tutor')">
+          AI Study Tutor
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const noteContent = `{{ content | tojson | safe }}`;
+
+      function navigateTo(action) {
+        sessionStorage.setItem("processedNotes", noteContent);
+        window.location.href = `/${action}`;
+      }
+    </script>
+  </body>
+</html>
