@@ -9,11 +9,12 @@ import certifi
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+import os
 
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 app = Flask(__name__)
-client = OpenAI(api_key=openaikey.key())
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
 app.secret_key = "c64421b5faabcb967d4e9ea63ac771d94dea9e4d7f0ec2444bff59f54263ae8f"
 
