@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
 from io import BytesIO
 from fpdf import FPDF
-import openaikey
 from openai import OpenAI
 import re
 import os
