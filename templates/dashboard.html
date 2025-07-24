@@ -30,7 +30,7 @@
         {% for note in notes %}
         <li style="margin-bottom: 12px">
           <a
-            href="{{ url_for('view_note', note_id=note[0]) }}"
+            href="{{ url_for('view_note', note_id=note.id) }}"
             style="
               color: #b27000;
               font-weight: 700;
@@ -38,7 +38,7 @@
               font-size: 1.1rem;
             "
           >
-            {{ note[1] }}
+            {{ note.title }}
           </a>
         </li>
         {% endfor %}
