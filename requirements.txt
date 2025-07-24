@@ -2,5 +2,8 @@ Flask==3.1.1
 openai==1.97.0
 fpdf==1.7.2
 certifi==2025.7.14
-gunicorn
-flask-login
+psycopg2-binary==2.9.6
+Flask-Login==0.6.2
+Flask-SQLAlchemy==3.0.3
+SQLAlchemy==2.0.19
+Werkzeug==2.3.7
