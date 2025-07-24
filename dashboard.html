@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard - AI Study App</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Welcome, {{ email }}</h1>
+
+      <div class="nav-buttons">
+        <a href="{{ url_for('enter_notes') }}" class="button"
+          >Enter New Notes</a
+        >
+        <a
+          href="{{ url_for('logout') }}"
+          class="button"
+          style="background: #d14a4a; color: white; box-shadow: none"
+          >Logout</a
+        >
+      </div>
+
+      {% if notes %}
+      <h2>Your Notes</h2>
+      <ul style="list-style: none; padding-left: 0">
+        {% for note in notes %}
+        <li style="margin-bottom: 12px">
+          <a
+            href="{{ url_for('view_note', note_id=note.id) }}"
+            style="
+              color: #b27000;
+              font-weight: 700;
+              text-decoration: none;
+              font-size: 1.1rem;
+            "
+          >
+            {{ note.title }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="font-weight: 600; color: #7a6b3a">
+        You don't have any notes yet. Use "Enter New Notes" to add some!
+      </p>
+      {% endif %}
+    </div>
+  </body>
+</html>
