@@ -40,6 +40,11 @@
           >
             {{ note.title }}
           </a>
+          <!-- Debug info: -->
+          <div style="font-size: 0.8rem; color: gray">
+            Debug: note.id={{ note.id }}, note.title="{{ note.title }}", note
+            object={{ note }}
+          </div>
         </li>
         {% endfor %}
       </ul>
