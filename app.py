@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, session
 from io import BytesIO
 from fpdf import FPDF
 from openai import OpenAI
@@ -147,7 +147,7 @@ def save_note():
 def view_note(note_id):
     note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
     if note:
-        return render_template('view_note.html', title=note.title, content=note.content)
+        return render_template('view_note.html', title=note.title, content=note.content, note_id=note.id)
     else:
         flash("Note not found or access denied.", "error")
         return redirect(url_for('dashboard'))
@@ -159,32 +159,62 @@ def index():
     else:
         return redirect(url_for('login'))
 
-# --- Other Pages ---
+# --- Modified Study Tool Routes to Accept Note ID ---
 
 @app.route('/flashcards')
+@app.route('/flashcards/<int:note_id>')
 @login_required
-def flashcards():
-    return render_template('flashcards.html')
+def flashcards(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('flashcards.html', note_content=note_content)
 
 @app.route('/questions')
+@app.route('/questions/<int:note_id>')
 @login_required
-def questions():
-    return render_template('questions.html')
+def questions(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('questions.html', note_content=note_content)
 
 @app.route('/summarise')
+@app.route('/summarise/<int:note_id>')
 @login_required
-def summarise():
-    return render_template('summarise.html')
+def summarise(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('summarise.html', note_content=note_content)
 
 @app.route('/pastpaper')
+@app.route('/pastpaper/<int:note_id>')
 @login_required
-def pastpaper():
-    return render_template('pastpaper.html')
+def pastpaper(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('pastpaper.html', note_content=note_content)
 
 @app.route('/tutor')
+@app.route('/tutor/<int:note_id>')
 @login_required
-def tutor():
-    return render_template('tutor.html')
+def tutor(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('tutor.html', note_content=note_content)
 
 @app.route('/my-notes')
 @login_required
