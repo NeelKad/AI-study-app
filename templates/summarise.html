@@ -25,24 +25,30 @@
       const loadingIndicator = document.getElementById("loadingIndicator");
       const backBtn = document.getElementById("backBtn");
 
+      // Get note content from template or sessionStorage
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      
+      if (!noteContent) {
+        noteContent = sessionStorage.getItem("processedNotes");
+      }
+
       backBtn.addEventListener("click", () => {
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       });
 
       function showLoading() {
-        loadingIndicator.classList.add("visible");
+        loadingIndicator.classList.remove("loading-hidden");
+        loadingIndicator.classList.add("loading-visible");
       }
+      
       function hideLoading() {
-        loadingIndicator.classList.remove("visible");
+        loadingIndicator.classList.add("loading-hidden");
+        loadingIndicator.classList.remove("loading-visible");
       }
 
       async function loadSummary() {
-        const notes = sessionStorage.getItem("processedNotes");
-        if (!notes) {
-          alert(
-            "No processed notes found! Please enter and process notes first."
-          );
-          window.location.href = "/";
+        if (!noteContent) {
+          mainContent.innerHTML = "<p style='color:red;'>No note content found! Please go back and select a note.</p>";
           return;
         }
 
@@ -52,9 +58,11 @@
           const res = await fetch("/api/summarise", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes }),
+            body: JSON.stringify({ notes: noteContent }),
           });
+          
           if (!res.ok) throw new Error("Failed to fetch summary");
+          
           const data = await res.json();
           hideLoading();
 
@@ -63,7 +71,7 @@
             return;
           }
 
-          mainContent.innerHTML = `<h3>Summary:</h3><p>${data.summary}</p>`;
+          mainContent.innerHTML = `<h3>Summary:</h3><p style="line-height: 1.6; font-size: 1.1rem;">${data.summary}</p>`;
         } catch (err) {
           hideLoading();
           mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
