@@ -170,6 +170,33 @@
         font-style: italic;
         margin-bottom: 15px;
       }
+
+      /* Typing indicator with animated dots */
+      .typing-dots {
+        display: inline-block;
+        font-size: 1.5em;
+        line-height: 1;
+      }
+
+      .typing-dots::after {
+        content: '';
+        animation: typing 1.5s infinite;
+      }
+
+      @keyframes typing {
+        0%, 20% { content: ''; }
+        33% { content: '.'; }
+        66% { content: '..'; }
+        100% { content: '...'; }
+      }
+
+      /* Typing message styling */
+      .typing-message {
+        background-color: #fff9db !important;
+        color: #7a6b3a !important;
+        font-style: italic;
+        opacity: 0.8;
+      }
     </style>
   </head>
   <body>
@@ -261,15 +288,17 @@
         userInput.disabled = true;
         sendBtn.disabled = true;
 
-        // Add typing indicator
+        // Add typing indicator with animated dots
         const typingDiv = document.createElement("div");
-        typingDiv.className = "message ai-msg";
-        typingDiv.textContent = "Typing...";
+        typingDiv.className = "message ai-msg typing-message";
         typingDiv.id = "typing-indicator";
+        typingDiv.innerHTML = 'AI is thinking<span class="typing-dots"></span>';
         chatWindow.appendChild(typingDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
         try {
+          console.log("Sending message to tutor API:", message); // Debug log
+          
           const res = await fetch("/api/tutor_chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -277,3 +306,46 @@
               message: message,
               conversation: conversation,
               notes: noteContent || "",
+            }),
+          });
+          
+          console.log("Response status:", res.status); // Debug log
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("API Error:", errorText); // Debug log
+            throw new Error(`Failed to get response from AI tutor. Status: ${res.status}`);
+          }
+          
+          const data = await res.json();
+          console.log("Received data:", data); // Debug log
+          
+          if (data.error) throw new Error(data.error);
+
+          // Remove typing indicator
+          const typingIndicator = document.getElementById("typing-indicator");
+          if (typingIndicator) {
+            typingIndicator.remove();
+          }
+
+          addMessage(data.reply, false);
+
+          conversation.push({ role: "user", content: message });
+          conversation.push({ role: "assistant", content: data.reply });
+        } catch (err) {
+          console.error("Chat error:", err); // Debug log
+          // Remove typing indicator on error
+          const typingIndicator = document.getElementById("typing-indicator");
+          if (typingIndicator) {
+            typingIndicator.remove();
+          }
+          addMessage("Error: " + err.message, false);
+        } finally {
+          userInput.disabled = false;
+          sendBtn.disabled = false;
+          userInput.focus();
+        }
+      });
+    </script>
+  </body>
+</html>
