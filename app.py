@@ -363,34 +363,69 @@ def api_pastpaper():
 @app.route('/api/tutor_chat', methods=['POST'])
 @login_required
 def api_tutor_chat():
-    data = request.json
-    user_message = data.get('message', '').strip()
-    conversation = data.get('conversation', [])
-    if not user_message:
-        return jsonify({"error": "Message is empty"}), 400
-    notes = data.get('notes', '')
-    system_prompt = (
-        "You are a professional, patient, and knowledgeable AI study tutor. "
-        "Use the study notes below to help the user with clear, concise explanations and answer their questions.\n\n"
-        f"Study notes:\n{notes}\n\n"
-        "If the notes don't contain enough info, politely say so and try to help generally."
-    )
-    messages = [{"role": "system", "content": system_prompt}]
-    if conversation:
-        messages.extend(conversation)
-    messages.append({"role": "user", "content": user_message})
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.5,
-            max_tokens=500
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        user_message = data.get('message', '').strip()
+        conversation = data.get('conversation', [])
+        notes = data.get('notes', '')
+        
+        if not user_message:
+            return jsonify({"error": "Message is empty"}), 400
+
+        # Build the system prompt
+        system_prompt = (
+            "You are a professional, patient, and knowledgeable AI study tutor. "
+            "You help students understand concepts, answer questions, and provide clear explanations. "
         )
+        
+        if notes:
+            system_prompt += (
+                f"Use the study notes below to help the user with accurate information:\n\n"
+                f"Study notes:\n{notes}\n\n"
+                "Base your answers on these notes when relevant, but you can also provide general knowledge to help explain concepts."
+            )
+        else:
+            system_prompt += (
+                "The user doesn't have specific study notes loaded, so help them with general study questions "
+                "and provide clear, educational explanations."
+            )
+
+        # Prepare messages for OpenAI
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history (limit to last 10 exchanges to avoid token limits)
+        if conversation:
+            recent_conversation = conversation[-20:]  # Last 20 messages (10 exchanges)
+            messages.extend(recent_conversation)
+        
+        # Add current user message
+        messages.append({"role": "user", "content": user_message})
+
+        # Make API call to OpenAI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",  # Using gpt-3.5-turbo instead of gpt-4o-mini for reliability
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500,
+            timeout=30  # Add timeout
+        )
+        
         assistant_message = response.choices[0].message.content.strip()
+        
+        if not assistant_message:
+            return jsonify({"error": "Empty response from AI"}), 500
+            
         return jsonify({"reply": assistant_message})
+        
     except Exception as e:
-        print("Tutor Chat API error:", e)
-        return jsonify({"error": "Failed to get response from AI."}), 500
+        print(f"Tutor Chat API error: {str(e)}")
+        # Return a more user-friendly error message
+        return jsonify({
+            "error": "I'm having trouble processing your request right now. Please try again in a moment."
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
