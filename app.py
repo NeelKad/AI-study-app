@@ -19,7 +19,16 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
 
 # Use DATABASE_URL env var or fallback to sqlite local file for testing
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+# Database configuration for Render deployment
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    # Render sometimes provides postgres:// but SQLAlchemy needs postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Fallback to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
