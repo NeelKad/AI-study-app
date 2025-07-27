@@ -9,8 +9,6 @@
     />
   </head>
   <body>
-    <script> function navigateTo(path) {window.location.href = path;}</script>
-
     <div class="container" style="max-width: 700px">
       <a href="{{ url_for('dashboard') }}" id="backBtn"
         >&larr; Back to Dashboard</a
@@ -55,11 +53,15 @@
     </div>
 
     <script>
-      const noteContent = `{{ content | tojson | safe }}`;
+      const noteContent = {{ content | tojson | safe }};
+      const noteId = {{ note_id }};
 
       function navigateTo(action) {
+        // Set the note content in sessionStorage for the JavaScript to use
         sessionStorage.setItem("processedNotes", noteContent);
-        window.location.href = `/${action}`;
+        
+        // Navigate to the route with note_id
+        window.location.href = `/${action}/${noteId}`;
       }
     </script>
   </body>
