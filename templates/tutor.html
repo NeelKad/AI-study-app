@@ -41,7 +41,7 @@
         font-size: 2.25rem;
       }
 
-      /* Back button - styled like your .button-row buttons */
+      /* Back button */
       #backBtn {
         background-color: #2c80ff;
         color: white;
@@ -162,14 +162,25 @@
         box-shadow: none;
         color: #a18a3e;
       }
+
+      /* Status message */
+      .status-message {
+        text-align: center;
+        color: #7a6b3a;
+        font-style: italic;
+        margin-bottom: 15px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <button id="backBtn" aria-label="Back to main page">
-        ← Back to Notes
+        ← Back to Dashboard
       </button>
       <h1>AI Study Tutor</h1>
+      
+      <div id="noteStatus" class="status-message"></div>
+      
       <div
         id="chatWindow"
         role="log"
@@ -202,14 +213,34 @@
       const chatForm = document.getElementById("chatForm");
       const userInput = document.getElementById("userInput");
       const sendBtn = document.getElementById("sendBtn");
+      const noteStatus = document.getElementById("noteStatus");
 
-      // Load notes from sessionStorage or fallback to empty string
-      const notes = sessionStorage.getItem("processedNotes") || "";
+      // Get note content from template or sessionStorage
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      
+      if (!noteContent) {
+        noteContent = sessionStorage.getItem("processedNotes");
+      }
+
+      // Display status message
+      if (noteContent) {
+        noteStatus.textContent = "✓ Note content loaded - I can help you study based on your notes!";
+        noteStatus.style.color = "#4a7a4a";
+        
+        // Add welcome message
+        addMessage("Hello! I'm your AI study tutor. I have access to your notes and I'm ready to help you understand the material. What would you like to study or discuss?", false);
+      } else {
+        noteStatus.textContent = "⚠ No specific note content loaded - I can still help with general questions!";
+        noteStatus.style.color = "#b27000";
+        
+        // Add welcome message without specific notes
+        addMessage("Hello! I'm your AI study tutor. I don't have access to specific notes right now, but I'm still here to help with your general study questions!", false);
+      }
 
       let conversation = [];
 
       backBtn.addEventListener("click", () => {
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       });
 
       function addMessage(text, isUser = false) {
@@ -230,6 +261,14 @@
         userInput.disabled = true;
         sendBtn.disabled = true;
 
+        // Add typing indicator
+        const typingDiv = document.createElement("div");
+        typingDiv.className = "message ai-msg";
+        typingDiv.textContent = "Typing...";
+        typingDiv.id = "typing-indicator";
+        chatWindow.appendChild(typingDiv);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
         try {
           const res = await fetch("/api/tutor_chat", {
             method: "POST",
@@ -237,25 +276,4 @@
             body: JSON.stringify({
               message: message,
               conversation: conversation,
-              notes: notes,
-            }),
-          });
-          if (!res.ok) throw new Error("Failed to get response from AI tutor.");
-          const data = await res.json();
-          if (data.error) throw new Error(data.error);
-
-          addMessage(data.reply, false);
-
-          conversation.push({ role: "user", content: message });
-          conversation.push({ role: "assistant", content: data.reply });
-        } catch (err) {
-          addMessage("Error: " + err.message, false);
-        } finally {
-          userInput.disabled = false;
-          sendBtn.disabled = false;
-          userInput.focus();
-        }
-      });
-    </script>
-  </body>
-</html>
+              notes: noteContent || "",
