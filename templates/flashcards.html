@@ -103,12 +103,42 @@
       #backBtn:hover {
         color: #f4b400;
       }
+
+      .loading-hidden {
+        display: none;
+      }
+      .loading-visible {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        color: #b27000;
+        user-select: none;
+        justify-content: center;
+        margin: 20px 0;
+      }
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 4px solid #f4b400;
+        border-top: 4px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <button id="backBtn">← Back to Notes</button>
+      <button id="backBtn">← Back to Dashboard</button>
       <h1>Flashcards</h1>
+
+      <div id="loadingIndicator" class="loading-hidden">
+        <div class="spinner"></div>
+        <p>Loading flashcards...</p>
+      </div>
 
       <div id="flashcard">Loading...</div>
 
@@ -123,14 +153,32 @@
       const flashcardDiv = document.getElementById("flashcard");
       const prevBtn = document.getElementById("prevBtn");
       const nextBtn = document.getElementById("nextBtn");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+
+      // Get note content from template or sessionStorage
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      
+      if (!noteContent) {
+        noteContent = sessionStorage.getItem("processedNotes");
+      }
 
       backBtn.addEventListener("click", () => {
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       });
 
       let flashcards = [];
       let currentIndex = 0;
       let showingDefinition = false;
+
+      function showLoading() {
+        loadingIndicator.classList.remove("loading-hidden");
+        loadingIndicator.classList.add("loading-visible");
+      }
+      
+      function hideLoading() {
+        loadingIndicator.classList.add("loading-hidden");
+        loadingIndicator.classList.remove("loading-visible");
+      }
 
       function updateFlashcard() {
         if (flashcards.length === 0) {
@@ -175,25 +223,25 @@
       });
 
       async function loadFlashcards() {
-        const notes = sessionStorage.getItem("processedNotes");
-        if (!notes) {
-          alert(
-            "No processed notes found! Please enter and process notes first."
-          );
-          window.location.href = "/";
+        if (!noteContent) {
+          flashcardDiv.innerHTML = "<p style='color:red;'>No note content found! Please go back and select a note.</p>";
           return;
         }
 
+        showLoading();
         flashcardDiv.textContent = "Loading flashcards...";
 
         try {
           const res = await fetch("/api/flashcards", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes }),
+            body: JSON.stringify({ notes: noteContent }),
           });
+          
           if (!res.ok) throw new Error("Failed to fetch flashcards.");
+          
           const data = await res.json();
+          hideLoading();
 
           // Convert the returned object to array of {term, definition}
           flashcards = Object.entries(data).map(([term, definition]) => ({
@@ -209,6 +257,7 @@
             updateFlashcard();
           }
         } catch (err) {
+          hideLoading();
           flashcardDiv.textContent = `Error: ${err.message}`;
         }
       }
