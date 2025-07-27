@@ -12,7 +12,7 @@
   <body>
     <div class="container">
       <h1>Practice Paper</h1>
-      <button id="backBtn">← Back to Notes</button>
+      <button id="backBtn">← Back to Dashboard</button>
       <div id="loadingIndicator" class="loading-hidden">
         <div class="spinner"></div>
         <p>Generating practice paper...</p>
@@ -25,24 +25,30 @@
       const loadingIndicator = document.getElementById("loadingIndicator");
       const backBtn = document.getElementById("backBtn");
 
+      // Get note content from template or sessionStorage
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      
+      if (!noteContent) {
+        noteContent = sessionStorage.getItem("processedNotes");
+      }
+
       backBtn.addEventListener("click", () => {
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       });
 
       function showLoading() {
-        loadingIndicator.classList.add("visible");
+        loadingIndicator.classList.remove("loading-hidden");
+        loadingIndicator.classList.add("loading-visible");
       }
+      
       function hideLoading() {
-        loadingIndicator.classList.remove("visible");
+        loadingIndicator.classList.add("loading-hidden");
+        loadingIndicator.classList.remove("loading-visible");
       }
 
       async function loadPastpaper() {
-        const notes = sessionStorage.getItem("processedNotes");
-        if (!notes) {
-          alert(
-            "No processed notes found! Please enter and process notes first."
-          );
-          window.location.href = "/";
+        if (!noteContent) {
+          mainContent.innerHTML = "<p style='color:red;'>No note content found! Please go back and select a note.</p>";
           return;
         }
 
@@ -52,15 +58,41 @@
           const res = await fetch("/api/pastpaper", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes }),
+            body: JSON.stringify({ notes: noteContent }),
           });
+          
           if (!res.ok) throw new Error("Failed to generate practice paper");
+          
           const blob = await res.blob();
           hideLoading();
 
-          // Display the PDF inline
+          // Create download link and display message
           const url = URL.createObjectURL(blob);
-          mainContent.innerHTML = `<iframe src="${url}" width="100%" height="600px" style="border:none;"></iframe>`;
+          const downloadLink = document.createElement('a');
+          downloadLink.href = url;
+          downloadLink.download = 'practice_paper.pdf';
+          downloadLink.textContent = 'Download Practice Paper PDF';
+          downloadLink.className = 'button';
+          downloadLink.style.cssText = 'display: inline-block; margin: 20px 0; text-decoration: none;';
+          
+          mainContent.innerHTML = `
+            <div style="text-align: center;">
+              <p style="font-size: 1.2rem; margin-bottom: 20px;">Your practice paper has been generated!</p>
+            </div>
+          `;
+          mainContent.appendChild(downloadLink);
+
+          // Try to display PDF inline if possible
+          try {
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.style.cssText = 'width: 100%; height: 600px; border: none; margin-top: 20px; border-radius: 8px;';
+            mainContent.appendChild(iframe);
+          } catch (e) {
+            // If inline display fails, just show download link
+            console.log('Could not display PDF inline:', e);
+          }
+
         } catch (err) {
           hideLoading();
           mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
