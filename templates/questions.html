@@ -12,7 +12,7 @@
   <body>
     <div class="container">
       <h1>Questions</h1>
-      <button id="backBtn">← Back to Notes</button>
+      <button id="backBtn">← Back to Dashboard</button>
       <div id="loadingIndicator" class="loading-hidden">
         <div class="spinner"></div>
         <p>Loading questions...</p>
@@ -25,24 +25,30 @@
       const loadingIndicator = document.getElementById("loadingIndicator");
       const backBtn = document.getElementById("backBtn");
 
+      // Get note content from template or sessionStorage
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      
+      if (!noteContent) {
+        noteContent = sessionStorage.getItem("processedNotes");
+      }
+
       backBtn.addEventListener("click", () => {
-        window.location.href = "/";
+        window.location.href = "/dashboard";
       });
 
       function showLoading() {
-        loadingIndicator.classList.add("visible");
+        loadingIndicator.classList.remove("loading-hidden");
+        loadingIndicator.classList.add("loading-visible");
       }
+      
       function hideLoading() {
-        loadingIndicator.classList.remove("visible");
+        loadingIndicator.classList.add("loading-hidden");
+        loadingIndicator.classList.remove("loading-visible");
       }
 
       async function loadQuestions() {
-        const notes = sessionStorage.getItem("processedNotes");
-        if (!notes) {
-          alert(
-            "No processed notes found! Please enter and process notes first."
-          );
-          window.location.href = "/";
+        if (!noteContent) {
+          mainContent.innerHTML = "<p style='color:red;'>No note content found! Please go back and select a note.</p>";
           return;
         }
 
@@ -52,9 +58,11 @@
           const res = await fetch("/api/questions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes }),
+            body: JSON.stringify({ notes: noteContent }),
           });
+          
           if (!res.ok) throw new Error("Failed to fetch questions");
+          
           const data = await res.json();
           hideLoading();
 
@@ -89,6 +97,7 @@
 
         const questionText = document.createElement("div");
         questionText.id = "questionText";
+        questionText.style.cssText = "font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; color: #b27000;";
         questionText.textContent = `Q${currentQuestionIndex + 1}: ${
           questionsData[currentQuestionIndex]
         }`;
@@ -97,15 +106,19 @@
         const answerInput = document.createElement("textarea");
         answerInput.id = "answerInput";
         answerInput.placeholder = "Type your answer here...";
+        answerInput.style.cssText = "width: 100%; min-height: 120px; margin-bottom: 15px; padding: 12px; border-radius: 8px; border: 2px solid #f9d56e; background: #fff9db; font-size: 1rem;";
         container.appendChild(answerInput);
 
         const gradeBtn = document.createElement("button");
         gradeBtn.id = "gradeBtn";
         gradeBtn.textContent = "Grade My Answer";
+        gradeBtn.className = "action-btn";
+        gradeBtn.style.cssText = "margin-bottom: 20px;";
         container.appendChild(gradeBtn);
 
         const feedbackDiv = document.createElement("div");
         feedbackDiv.className = "feedback";
+        feedbackDiv.style.cssText = "background: #fff9db; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #f9d56e;";
         container.appendChild(feedbackDiv);
 
         const navDiv = document.createElement("div");
@@ -129,10 +142,10 @@
         gradeBtn.onclick = async () => {
           const userAnswer = answerInput.value.trim();
           if (!userAnswer) {
-            feedbackDiv.textContent = "Please enter an answer to grade.";
+            feedbackDiv.innerHTML = "<p style='color:red;'>Please enter an answer to grade.</p>";
             return;
           }
-          feedbackDiv.textContent = "Grading...";
+          feedbackDiv.innerHTML = "<p>Grading...</p>";
 
           try {
             const res = await fetch("/api/grade_question", {
@@ -141,18 +154,20 @@
               body: JSON.stringify({
                 question: questionsData[currentQuestionIndex],
                 answer: userAnswer,
-                notes: sessionStorage.getItem("processedNotes"),
+                notes: noteContent,
               }),
             });
+            
             if (!res.ok) throw new Error("Grading failed.");
+            
             const data = await res.json();
             feedbackDiv.innerHTML = `
-            <p><strong>Score:</strong> ${data.grade_score}/10</p>
-            <p><strong>Suggestion:</strong> ${data.improvement}</p>
-            <p><strong>Model Answer:</strong><br>${data.model_answer}</p>
-          `;
+              <p><strong>Score:</strong> ${data.grade_score}/10</p>
+              <p><strong>Suggestion:</strong> ${data.improvement}</p>
+              <p><strong>Model Answer:</strong><br>${data.model_answer}</p>
+            `;
           } catch (err) {
-            feedbackDiv.textContent = `Error: ${err.message}`;
+            feedbackDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
           }
         };
 
