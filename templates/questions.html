@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Questions - AI Study App</title>
     <link
       rel="stylesheet"
@@ -10,20 +10,293 @@
     />
   </head>
   <body>
-    <div class="container">
-      <h1>Questions</h1>
-      <button id="backBtn">← Back to Dashboard</button>
-      <div id="loadingIndicator" class="loading-hidden">
-        <div class="spinner"></div>
-        <p>Loading questions...</p>
+    <!-- Navigation Header -->
+    <header>
+      <nav class="navbar">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+              ← Dashboard
+            </a>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
+      <!-- Header Section -->
+      <div style="margin-bottom: 3rem; text-align: center;">
+        <h1 style="margin-bottom: 0.5rem; color: var(--accent);">Questions</h1>
+        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
+          Test your knowledge with AI-generated questions based on your notes
+        </p>
       </div>
-      <main id="mainContent"></main>
-    </div>
+
+      <!-- Loading Indicator -->
+      <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
+        <div style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: var(--bg-secondary); border-radius: 0.75rem; border: 1px solid var(--bg-border);">
+          <div class="spinner"></div>
+          <span style="color: var(--text-secondary); font-weight: 500;">Loading questions...</span>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div id="mainContent" class="card" style="padding: 2rem; min-height: 400px;">
+        <!-- Content will be populated by JavaScript -->
+      </div>
+    </main>
+
+    <style>
+      /* Color scheme matching dashboard */
+      :root {
+        --bg-primary: #0f0f23;
+        --bg-secondary: #1a1a3a;
+        --bg-tertiary: #252547;
+        --bg-border: #3a3a5c;
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #6366f1;
+        --success: #10b981;
+        --error: #ef4444;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* Navigation */
+      .navbar {
+        background: var(--bg-secondary);
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .nav-logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .nav-logo:hover {
+        color: var(--text-primary);
+      }
+
+      /* Buttons */
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--accent);
+        color: white;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .button-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--bg-border);
+      }
+
+      .button-secondary:hover {
+        background: var(--bg-border);
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--bg-border);
+        border-top: 2px solid var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Question styling */
+      .question-container {
+        margin-bottom: 2rem;
+      }
+
+      .question-text {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        color: var(--accent);
+        line-height: 1.5;
+      }
+
+      .answer-input {
+        width: 100%;
+        min-height: 150px;
+        padding: 1rem;
+        border: 2px solid var(--bg-border);
+        border-radius: 0.5rem;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-family: inherit;
+        resize: vertical;
+        margin-bottom: 1rem;
+        transition: border-color 0.2s ease;
+      }
+
+      .answer-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .answer-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .grade-button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 1.5rem;
+      }
+
+      .grade-button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .grade-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .feedback-box {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .feedback-box h4 {
+        color: var(--accent);
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+      }
+
+      .feedback-box p {
+        margin: 0.5rem 0;
+      }
+
+      .score {
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .nav-buttons {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .nav-button {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-border);
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .nav-button:hover:not(:disabled) {
+        background: var(--bg-border);
+        transform: translateY(-1px);
+      }
+
+      .nav-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .question-counter {
+        text-align: center;
+        color: var(--accent);
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .navbar {
+          padding: 1rem;
+        }
+        
+        main {
+          padding: 1rem;
+        }
+        
+        .question-text {
+          font-size: 1.125rem;
+        }
+        
+        .nav-buttons {
+          flex-direction: column;
+        }
+        
+        .button, .nav-button, .grade-button {
+          padding: 0.75rem 1rem;
+          font-size: 0.875rem;
+        }
+      }
+    </style>
 
     <script>
       const mainContent = document.getElementById("mainContent");
       const loadingIndicator = document.getElementById("loadingIndicator");
-      const backBtn = document.getElementById("backBtn");
 
       // Get note content from template or sessionStorage
       let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
@@ -32,23 +305,17 @@
         noteContent = sessionStorage.getItem("processedNotes");
       }
 
-      backBtn.addEventListener("click", () => {
-        window.location.href = "/dashboard";
-      });
-
       function showLoading() {
-        loadingIndicator.classList.remove("loading-hidden");
-        loadingIndicator.classList.add("loading-visible");
+        loadingIndicator.style.display = "block";
       }
       
       function hideLoading() {
-        loadingIndicator.classList.add("loading-hidden");
-        loadingIndicator.classList.remove("loading-visible");
+        loadingIndicator.style.display = "none";
       }
 
       async function loadQuestions() {
         if (!noteContent) {
-          mainContent.innerHTML = "<p style='color:red;'>No note content found! Please go back and select a note.</p>";
+          mainContent.innerHTML = "<p style='color: var(--error); text-align: center;'>No note content found! Please go back and select a note.</p>";
           return;
         }
 
@@ -67,14 +334,14 @@
           hideLoading();
 
           if (!data || data.length === 0) {
-            mainContent.innerHTML = "<p>No questions generated.</p>";
+            mainContent.innerHTML = "<p style='text-align: center; color: var(--text-secondary);'>No questions generated from your notes.</p>";
             return;
           }
 
           displayQuestion(data);
         } catch (err) {
           hideLoading();
-          mainContent.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+          mainContent.innerHTML = `<p style="color: var(--error); text-align: center;">Error: ${err.message}</p>`;
         }
       }
 
@@ -89,46 +356,57 @@
 
       function renderQuestion() {
         if (!questionsData || questionsData.length === 0) {
-          mainContent.innerHTML = "<p>No questions available.</p>";
+          mainContent.innerHTML = "<p style='text-align: center; color: var(--text-secondary);'>No questions available.</p>";
           return;
         }
 
         const container = document.createElement("div");
+        container.className = "question-container";
 
+        // Question counter
+        const counter = document.createElement("div");
+        counter.className = "question-counter";
+        counter.textContent = `Question ${currentQuestionIndex + 1} of ${questionsData.length}`;
+        container.appendChild(counter);
+
+        // Question text
         const questionText = document.createElement("div");
-        questionText.id = "questionText";
-        questionText.style.cssText = "font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; color: #b27000;";
-        questionText.textContent = `Q${currentQuestionIndex + 1}: ${
-          questionsData[currentQuestionIndex]
-        }`;
+        questionText.className = "question-text";
+        questionText.textContent = questionsData[currentQuestionIndex];
         container.appendChild(questionText);
 
+        // Answer input
         const answerInput = document.createElement("textarea");
-        answerInput.id = "answerInput";
+        answerInput.className = "answer-input";
         answerInput.placeholder = "Type your answer here...";
-        answerInput.style.cssText = "width: 100%; min-height: 120px; margin-bottom: 15px; padding: 12px; border-radius: 8px; border: 2px solid #f9d56e; background: #fff9db; font-size: 1rem;";
+        answerInput.id = "answerInput";
         container.appendChild(answerInput);
 
+        // Grade button
         const gradeBtn = document.createElement("button");
-        gradeBtn.id = "gradeBtn";
+        gradeBtn.className = "grade-button";
         gradeBtn.textContent = "Grade My Answer";
-        gradeBtn.className = "action-btn";
-        gradeBtn.style.cssText = "margin-bottom: 20px;";
+        gradeBtn.id = "gradeBtn";
         container.appendChild(gradeBtn);
 
+        // Feedback area
         const feedbackDiv = document.createElement("div");
-        feedbackDiv.className = "feedback";
-        feedbackDiv.style.cssText = "background: #fff9db; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #f9d56e;";
+        feedbackDiv.className = "feedback-box";
+        feedbackDiv.id = "feedbackDiv";
+        feedbackDiv.style.display = "none";
         container.appendChild(feedbackDiv);
 
+        // Navigation buttons
         const navDiv = document.createElement("div");
         navDiv.className = "nav-buttons";
 
         const prevBtn = document.createElement("button");
+        prevBtn.className = "nav-button";
         prevBtn.textContent = "← Previous Question";
         prevBtn.disabled = currentQuestionIndex === 0;
 
         const nextBtn = document.createElement("button");
+        nextBtn.className = "nav-button";
         nextBtn.textContent = "Next Question →";
         nextBtn.disabled = currentQuestionIndex === questionsData.length - 1;
 
@@ -139,13 +417,19 @@
         mainContent.innerHTML = "";
         mainContent.appendChild(container);
 
+        // Event listeners
         gradeBtn.onclick = async () => {
           const userAnswer = answerInput.value.trim();
           if (!userAnswer) {
-            feedbackDiv.innerHTML = "<p style='color:red;'>Please enter an answer to grade.</p>";
+            feedbackDiv.innerHTML = "<p style='color: var(--error);'>Please enter an answer to grade.</p>";
+            feedbackDiv.style.display = "block";
             return;
           }
-          feedbackDiv.innerHTML = "<p>Grading...</p>";
+          
+          gradeBtn.disabled = true;
+          gradeBtn.textContent = "Grading...";
+          feedbackDiv.innerHTML = "<p style='color: var(--text-secondary);'>Grading your answer...</p>";
+          feedbackDiv.style.display = "block";
 
           try {
             const res = await fetch("/api/grade_question", {
@@ -162,12 +446,16 @@
             
             const data = await res.json();
             feedbackDiv.innerHTML = `
-              <p><strong>Score:</strong> ${data.grade_score}/10</p>
-              <p><strong>Suggestion:</strong> ${data.improvement}</p>
+              <h4>Feedback</h4>
+              <p><strong>Score:</strong> <span class="score">${data.grade_score}/10</span></p>
+              <p><strong>Improvement Suggestion:</strong><br>${data.improvement}</p>
               <p><strong>Model Answer:</strong><br>${data.model_answer}</p>
             `;
           } catch (err) {
-            feedbackDiv.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+            feedbackDiv.innerHTML = `<p style="color: var(--error);">Error: ${err.message}</p>`;
+          } finally {
+            gradeBtn.disabled = false;
+            gradeBtn.textContent = "Grade My Answer";
           }
         };
 
