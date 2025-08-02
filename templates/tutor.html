@@ -48,30 +48,35 @@
       </div>
 
       <!-- Input Area -->
-      <form id="chatForm" style="display: flex; gap: 1rem; align-items: end;">
+      <form id="chatForm" style="display: flex; gap: 1rem; align-items: center;">
         <input
           type="text"
           id="userInput"
           placeholder="Ask your study question..."
           required
           style="
-            flex-grow: 1;
-            padding: 0.75rem 1rem;
+            flex: 1;
+            padding: 1rem 1.25rem;
             border: 2px solid var(--bg-border);
-            border-radius: 0.5rem;
-            background: var(--bg-tertiary);
+            border-radius: 0.75rem;
+            background: var(--bg-secondary);
             color: var(--text-primary);
-            font-size: 1.125rem;
+            font-size: 1rem;
             transition: border-color 0.2s ease;
-            width: 100%;
-            max-width: none;
+            min-width: 0;
+            height: 48px;
           "
         />
         <button
           type="submit"
           id="sendBtn"
           class="button"
-          style="padding: 0.75rem 1.5rem; white-space: nowrap;"
+          style="
+            padding: 1rem 1.5rem;
+            height: 48px;
+            flex-shrink: 0;
+            border-radius: 0.75rem;
+          "
         >
           Send
         </button>
