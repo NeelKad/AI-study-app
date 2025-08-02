@@ -49,27 +49,30 @@
 
       <!-- Input Area -->
       <form id="chatForm" style="display: flex; gap: 1rem; align-items: end;">
-        <input
-          type="text"
+        <textarea
           id="userInput"
           placeholder="Ask your study question..."
           required
+          rows="3"
           style="
             flex-grow: 1;
-            padding: 0.75rem 1rem;
+            padding: 1rem;
             border: 2px solid var(--bg-border);
             border-radius: 0.5rem;
             background: var(--bg-tertiary);
             color: var(--text-primary);
             font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
             transition: border-color 0.2s ease;
           "
-        />
+        ></textarea>
         <button
           type="submit"
           id="sendBtn"
           class="button"
-          style="padding: 0.75rem 1.5rem; white-space: nowrap;"
+          style="padding: 0.75rem 1.5rem; white-space: nowrap; align-self: flex-end;"
         >
           Send
         </button>
