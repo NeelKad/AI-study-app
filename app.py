@@ -179,6 +179,28 @@ def trial_required(f):
         
         return f(*args, **kwargs)
     return decorated_function
+from flask import request
+
+@app.route('/fix-trial', methods=['GET'])
+def fix_trial():
+    # Simple security: only run if you provide the correct admin key as a query parameter
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")  # Make sure this matches your actual admin key
+    
+    provided_key = request.args.get("key")
+    if provided_key != ADMIN_KEY:
+        return "Access Denied", 403
+
+    try:
+        # Update all users with NULL trial_expires_at to now + 20 minutes
+        db.session.execute("""
+            UPDATE users
+            SET trial_expires_at = NOW() + INTERVAL '20 minutes'
+            WHERE trial_expires_at IS NULL;
+        """)
+        db.session.commit()
+        return "Trial expiry updated for users with NULL values."
+    except Exception as e:
+        return f"Error: {e}", 500
 
 # --- Auth routes ---
 
@@ -698,5 +720,6 @@ def api_tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
