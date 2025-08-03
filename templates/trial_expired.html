@@ -1,65 +1,44 @@
-<!-- templates/trial_expired.html -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Trial Expired - AI Study App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  </head>
-  <body>
-    <div class="container" style="max-width: 600px; text-align: center;">
-      <h1 style="color: #ef4444; margin-bottom: 2rem;">⏰ Trial Expired</h1>
-      
-      <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1)); 
-                  border: 1px solid rgba(239, 68, 68, 0.4); 
-                  border-radius: 1rem; 
-                  padding: 2rem; 
-                  margin-bottom: 2rem;">
-        <h3 style="color: #fca5a5; margin-bottom: 1rem;">Your 10-minute trial has ended!</h3>
-        <p style="color: #fecaca; margin-bottom: 0;">
-          Thanks for testing the AI Study App! Your trial session has expired to help manage API costs.
-        </p>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <title>Trial Expired - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="container" style="max-width: 600px; text-align: center;">
+    <h1 style="color: #ef4444; margin-bottom: 2rem;">⏰ Trial Expired</h1>
 
-      <div style="background: var(--bg-secondary); 
-                  border: 1px solid var(--border); 
-                  border-radius: 1rem; 
-                  padding: 2rem; 
-                  margin-bottom: 2rem;">
-        <h4 style="color: var(--accent); margin-bottom: 1rem;">Want to continue using the app?</h4>
-        <p style="margin-bottom: 1.5rem;">
-          Contact the developer for unlimited access or wait for the full launch with subscription options!
-        </p>
-        
-        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-          <a href="mailto:your-email@example.com" class="button">
-            📧 Contact Developer
-          </a>
-          <a href="https://discord.gg/your-discord" class="button button-secondary">
-            💬 Join Discord
-          </a>
-        </div>
-      </div>
-
-      <div style="background: var(--bg-tertiary); 
-                  border: 1px solid var(--border); 
-                  border-radius: 1rem; 
-                  padding: 1.5rem; 
-                  font-size: 0.875rem; 
-                  color: var(--text-muted);">
-        <p style="margin: 0;">
-          <strong>Your account details:</strong><br>
-          Email: {{ user.email }}<br>
-          Trial started: {{ user.created_at.strftime('%Y-%m-%d %H:%M UTC') if user.created_at else 'N/A' }}<br>
-          Trial expired: {{ user.trial_expires_at.strftime('%Y-%m-%d %H:%M UTC') if user.trial_expires_at else 'N/A' }}
-        </p>
-      </div>
-
-      <div style="margin-top: 2rem;">
-        <a href="{{ url_for('logout') }}" class="button button-secondary">
-          Logout
-        </a>
-      </div>
+    <div style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1)); 
+                border: 1px solid rgba(239, 68, 68, 0.4); 
+                border-radius: 1rem; 
+                padding: 2rem; 
+                margin-bottom: 2rem;">
+      <h3 style="color: #fca5a5; margin-bottom: 1rem;">Your 10-minute trial has ended!</h3>
+      <p style="color: #fecaca; margin-bottom: 0;">
+        Thanks for testing the AI Study App! Your trial session has expired.
+      </p>
     </div>
-  </body>
+
+    <!-- Admin Key Unlock -->
+    <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem;">
+      <h4 style="color: var(--accent); margin-bottom: 1rem;">Admin Unlock</h4>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div style="margin-bottom: 1rem; color: {{ 'red' if category=='error' else 'green' }};">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="POST" action="{{ url_for('trial_unlock') }}">
+        <input type="password" name="admin_key" placeholder="Enter admin key" required style="width: 100%; padding: 0.5rem; margin-bottom: 1rem;" />
+        <button type="submit" class="button" style="width: 100%;">Unlock Access</button>
+      </form>
+    </div>
+
+    <div style="margin-top: 2rem;">
+      <a href="{{ url_for('logout') }}" class="button button-secondary">Logout</a>
+    </div>
+  </div>
+</body>
 </html>
