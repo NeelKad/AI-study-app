@@ -553,9 +553,15 @@ def create_reel():
     # Return video file
     return send_file(output_path, mimetype="video/mp4", as_attachment=False, download_name="study_reel.mp4")
 
+@app.route('/create_reel')
+@login_required
+@trial_required
+def create_reel_page():
+    return render_template('create_reel.html', user=current_user)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
