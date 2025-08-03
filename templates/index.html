@@ -1,122 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Enter New Note - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-    <style>
-      /* Loading bar container */
-      #loadingBarContainer {
-        width: 100%;
-        height: 8px;
-        background: #f9d56e88;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-top: 15px;
-        display: none;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enter Notes - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .form-container {
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: var(--shadow-lg);
+    }
+    h1 {
+      text-align: center;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      background: var(--bg-input);
+      color: var(--text-primary);
+    }
+    textarea {
+      resize: vertical;
+    }
+    .button {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.3s;
+    }
+    .button:hover {
+      background: var(--accent-hover);
+    }
+    .actions {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>📝 Enter Your Notes</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div style="
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            {% if category == 'error' %}
+              background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+            {% else %}
+              background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0;
+            {% endif %}
+          ">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-      /* Animated loading bar */
-      #loadingBar {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(135deg, #f4b400, #f9d56e);
-        border-radius: 8px;
-        animation: loadingAnim 2s linear infinite;
-      }
-
-      @keyframes loadingAnim {
-        0% {
-          width: 0%;
-          left: 0%;
-        }
-        50% {
-          width: 80%;
-          left: 10%;
-        }
-        100% {
-          width: 0%;
-          left: 100%;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container" style="max-width: 700px">
-      <a href="{{ url_for('dashboard') }}" id="backBtn"
-        >&larr; Back to Dashboard</a
-      >
-      <h1>Enter New Note</h1>
-
-      <form id="noteForm">
+    <form method="POST" action="{{ url_for('add_note') }}">
+      <div>
+        <label for="title">Note Title</label>
         <input
           type="text"
           id="title"
           name="title"
-          placeholder="Note Title"
+          placeholder="Enter note title"
           required
         />
+      </div>
+
+      <div>
+        <label for="content">Note Content</label>
         <textarea
           id="content"
           name="content"
-          placeholder="Enter your notes here..."
+          rows="8"
+          placeholder="Write your notes here..."
           required
-          rows="10"
         ></textarea>
-
-        <button type="submit" id="saveBtn">Save Note</button>
-      </form>
-
-      <div id="loadingBarContainer">
-        <div id="loadingBar"></div>
       </div>
-    </div>
 
-    <script>
-      const form = document.getElementById("noteForm");
-      const saveBtn = document.getElementById("saveBtn");
-      const loadingBarContainer = document.getElementById(
-        "loadingBarContainer"
-      );
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        // Show loading bar & disable button
-        loadingBarContainer.style.display = "block";
-        saveBtn.disabled = true;
-
-        const data = {
-          title: form.title.value.trim(),
-          content: form.content.value.trim(),
-        };
-
-        try {
-          const response = await fetch("/save-note", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          });
-
-          if (response.ok) {
-            // Redirect to dashboard after success
-            window.location.href = "/dashboard";
-          } else {
-            alert("Failed to save note. Please try again.");
-          }
-        } catch (err) {
-          alert("Error saving note. Please check your connection.");
-        } finally {
-          // Hide loading bar & enable button if still on page
-          loadingBarContainer.style.display = "none";
-          saveBtn.disabled = false;
-        }
-      });
-    </script>
-  </body>
+      <div class="actions">
+        <button type="submit" class="button">💾 Save Note</button>
+      </div>
+    </form>
+  </div>
+</body>
 </html>
