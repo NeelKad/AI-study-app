@@ -8,6 +8,128 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
+    <style>
+      /* Consistent color scheme matching other templates */
+      :root {
+        --bg-primary: #0f0f23;
+        --bg-secondary: #1a1a3a;
+        --bg-tertiary: #252547;
+        --bg-border: #3a3a5c;
+        --bg-hover: rgba(255, 255, 255, 0.05);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #6366f1;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* Navigation */
+      .navbar {
+        background: var(--bg-secondary);
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .nav-logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .nav-logo:hover {
+        color: var(--text-primary);
+      }
+
+      /* Buttons */
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--accent);
+        color: white;
+        border: none;
+      }
+
+      .button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .button-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-border);
+      }
+
+      .button-secondary:hover {
+        background: var(--bg-border);
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-md);
+      }
+
+      /* Notes grid */
+      .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .note-card {
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+      }
+
+      .note-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .note-card:hover h3 {
+        color: var(--accent);
+      }
+    </style>
   </head>
   <body>
     <!-- Navigation Header -->
@@ -80,6 +202,90 @@
         </p>
       </div>
 
+      <!-- Study Schedule Section -->
+      <div style="margin-bottom: 3rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+            🗓️ Your Study Schedule
+          </h2>
+          <div style="display: flex; gap: 0.75rem;">
+            <button id="generateScheduleBtn" class="button" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+              ✨ Generate AI Schedule
+            </button>
+            <button id="addCustomItemBtn" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+              ➕ Add Item
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule Items Container -->
+        <div id="scheduleContainer" class="card" style="padding: 1.5rem; min-height: 200px;">
+          {% if schedule_items %}
+            <div id="scheduleList" style="display: flex; flex-direction: column; gap: 1rem;">
+              {% for item in schedule_items %}
+              <div class="schedule-item {% if item.completed %}completed{% endif %}" data-item-id="{{ item.id }}" style="
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                padding: 1rem;
+                background: {% if item.completed %}var(--bg-tertiary){% else %}var(--bg-secondary){% endif %};
+                border: 1px solid var(--bg-border);
+                border-radius: 0.75rem;
+                transition: all 0.2s ease;
+                {% if item.completed %}opacity: 0.7;{% endif %}
+              ">
+                <input 
+                  type="checkbox" 
+                  class="complete-checkbox"
+                  {% if item.completed %}checked{% endif %}
+                  style="width: 20px; height: 20px; cursor: pointer;"
+                >
+                <div style="flex-grow: 1;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 600; {% if item.completed %}text-decoration: line-through; color: var(--text-muted);{% endif %}">
+                      {{ item.title }}
+                    </h4>
+                    <span class="priority-badge priority-{{ item.priority }}">
+                      {{ item.priority.title() }}
+                    </span>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">
+                      {{ item.estimated_time }}min
+                    </span>
+                  </div>
+                  <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; {% if item.completed %}text-decoration: line-through;{% endif %}">
+                    {{ item.description }}
+                  </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  {% if item.note_id %}
+                  <button class="study-action-btn" data-action="{{ item.study_action }}" data-note-id="{{ item.note_id }}">
+                    {{ item.study_action.title() }}
+                  </button>
+                  {% endif %}
+                  <button class="delete-schedule-btn" title="Delete item">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div id="emptySchedule" style="text-align: center; padding: 2rem;">
+              <div style="width: 60px; height: 60px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem;">
+                📅
+              </div>
+              <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600;">No study schedule yet</h3>
+              <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary);">
+                Let AI create a personalized study schedule based on your notes, or add your own items.
+              </p>
+              <button onclick="generateSchedule()" class="button" style="padding: 0.75rem 1.5rem;">
+                ✨ Generate AI Study Schedule
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
       <!-- Quick Actions -->
       <div style="margin-bottom: 3rem;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
@@ -138,20 +344,6 @@
           {% endfor %}
         </div>
       </div>
-      {% else %}
-      <!-- Empty State -->
-      <div style="text-align: center; padding: 3rem 1rem;">
-        <div style="width: 80px; height: 80px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">
-          📝
-        </div>
-        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem; font-weight: 600;">No notes yet</h3>
-        <p style="margin: 0 0 2rem 0; color: var(--text-secondary); max-width: 400px; margin-left: auto; margin-right: auto;">
-          Get started by creating your first study note. You can then use our AI tools to generate flashcards, summaries, and more.
-        </p>
-        <a href="{{ url_for('enter_notes') }}" class="button" style="padding: 0.75rem 1.5rem;">
-          Create Your First Note
-        </a>
-      </div>
       {% endif %}
 
       <!-- Flash Messages -->
@@ -179,7 +371,382 @@
       {% endwith %}
     </main>
 
+    <!-- Add Custom Schedule Item Modal -->
+    <div id="addItemModal" style="
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1001;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      ">
+        <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600;">Add Custom Study Item</h3>
+        
+        <form id="addItemForm">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Title</label>
+            <input type="text" id="itemTitle" required style="
+              width: 100%;
+              padding: 0.75rem;
+              border: 1px solid var(--bg-border);
+              border-radius: 0.5rem;
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              font-size: 1rem;
+            ">
+          </div>
+          
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Description</label>
+            <textarea id="itemDescription" rows="3" style="
+              width: 100%;
+              padding: 0.75rem;
+              border: 1px solid var(--bg-border);
+              border-radius: 0.5rem;
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              font-size: 1rem;
+              resize: vertical;
+            "></textarea>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Study Action</label>
+              <select id="itemAction" style="
+                width: 100%;
+                padding: 0.75rem;
+                border: 1px solid var(--bg-border);
+                border-radius: 0.5rem;
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+                font-size: 1rem;
+              ">
+                <option value="summarise">Summarise</option>
+                <option value="flashcards">Flashcards</option>
+                <option value="questions">Questions</option>
+                <option value="tutor">AI Tutor</option>
+                <option value="pastpaper">Practice Paper</option>
+              </select>
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Priority</label>
+              <select id="itemPriority" style="
+                width: 100%;
+                padding: 0.75rem;
+                border: 1px solid var(--bg-border);
+                border-radius: 0.5rem;
+                background: var(--bg-tertiary);
+                color: var(--text-primary);
+                font-size: 1rem;
+              ">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Estimated Time (minutes)</label>
+            <input type="number" id="itemTime" value="15" min="5" max="120" style="
+              width: 100%;
+              padding: 0.75rem;
+              border: 1px solid var(--bg-border);
+              border-radius: 0.5rem;
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              font-size: 1rem;
+            ">
+          </div>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Related Note (Optional)</label>
+            <select id="itemNote" style="
+              width: 100%;
+              padding: 0.75rem;
+              border: 1px solid var(--bg-border);
+              border-radius: 0.5rem;
+              background: var(--bg-tertiary);
+              color: var(--text-primary);
+              font-size: 1rem;
+            ">
+              <option value="">No specific note</option>
+              {% for note in notes %}
+              <option value="{{ note.id }}">{{ note.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" id="cancelAddItem" class="button button-secondary">
+              Cancel
+            </button>
+            <button type="submit" class="button">
+              Add Item
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <style>
+      /* Consistent color scheme matching other templates */
+      :root {
+        --bg-primary: #0f0f23;
+        --bg-secondary: #1a1a3a;
+        --bg-tertiary: #252547;
+        --bg-border: #3a3a5c;
+        --bg-hover: rgba(255, 255, 255, 0.05);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #6366f1;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* Navigation */
+      .navbar {
+        background: var(--bg-secondary);
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .nav-logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .nav-logo:hover {
+        color: var(--text-primary);
+      }
+
+      /* Buttons */
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--accent);
+        color: white;
+        border: none;
+      }
+
+      .button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .button-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-border);
+      }
+
+      .button-secondary:hover {
+        background: var(--bg-border);
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-md);
+      }
+
+      /* Notes grid */
+      .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .note-card {
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+      }
+
+      .note-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .note-card:hover h3 {
+        color: var(--accent);
+      }
+
+      /* Schedule item styling */
+      .schedule-item {
+        transition: all 0.2s ease;
+      }
+
+      .schedule-item:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+
+      .schedule-item.completed {
+        opacity: 0.6;
+      }
+
+      .study-action-btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .study-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .delete-schedule-btn {
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: color 0.2s ease;
+      }
+
+      .delete-schedule-btn:hover {
+        color: var(--error);
+      }
+
+      /* Priority badges */
+      .priority-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .priority-high {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+      }
+
+      .priority-medium {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+      }
+
+      .priority-low {
+        background: rgba(107, 114, 128, 0.2);
+        color: #d1d5db;
+        border: 1px solid rgba(107, 114, 128, 0.4);
+      }
+
+      /* Loading spinner */
+      .loading-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--bg-border);
+        border-top: 2px solid var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        margin-right: 0.5rem;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Modal styling */
+      #addItemModal input,
+      #addItemModal textarea,
+      #addItemModal select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--bg-border);
+        border-radius: 0.5rem;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      #addItemModal input:focus,
+      #addItemModal textarea:focus,
+      #addItemModal select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      #addItemModal input::placeholder,
+      #addItemModal textarea::placeholder {
+        color: var(--text-muted);
+      }
+
+      #addItemModal textarea {
+        resize: vertical;
+      }
+
+      /* Animations */
       @keyframes slideIn {
         from {
           opacity: 0;
@@ -188,23 +755,6 @@
         to {
           opacity: 1;
           transform: translateX(0);
-        }
-      }
-
-      .note-card {
-        min-height: 200px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .note-card:hover h3 {
-        color: var(--accent);
-      }
-
-      /* Auto-hide flash messages */
-      @media (min-width: 768px) {
-        .flash-message {
-          animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-out 4.7s forwards;
         }
       }
 
@@ -235,9 +785,205 @@
         0% { left: -100%; }
         100% { left: 100%; }
       }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .navbar {
+          padding: 1rem;
+        }
+        
+        main {
+          padding: 1rem !important;
+        }
+        
+        .schedule-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+        
+        .schedule-item > div:last-child {
+          align-self: flex-end;
+        }
+        
+        #addItemModal > div {
+          padding: 1.5rem;
+        }
+
+        .notes-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
 
     <script>
+      // DOM elements
+      const generateScheduleBtn = document.getElementById('generateScheduleBtn');
+      const addCustomItemBtn = document.getElementById('addCustomItemBtn');
+      const addItemModal = document.getElementById('addItemModal');
+      const addItemForm = document.getElementById('addItemForm');
+      const cancelAddItem = document.getElementById('cancelAddItem');
+      const scheduleContainer = document.getElementById('scheduleContainer');
+
+      // Generate AI Schedule
+      async function generateSchedule() {
+        const btn = document.getElementById('generateScheduleBtn') || event.target;
+        const originalText = btn.textContent;
+        
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loading-spinner"></span>Generating...';
+          
+          const response = await fetch('/api/generate-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to generate schedule');
+          }
+          
+          // Refresh the page to show new schedule
+          location.reload();
+          
+        } catch (error) {
+          alert('Error generating schedule: ' + error.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+
+      // Event listeners
+      if (generateScheduleBtn) {
+        generateScheduleBtn.addEventListener('click', generateSchedule);
+      }
+
+      if (addCustomItemBtn) {
+        addCustomItemBtn.addEventListener('click', () => {
+          addItemModal.style.display = 'flex';
+        });
+      }
+
+      if (cancelAddItem) {
+        cancelAddItem.addEventListener('click', () => {
+          addItemModal.style.display = 'none';
+          addItemForm.reset();
+        });
+      }
+
+      // Close modal when clicking outside
+      addItemModal.addEventListener('click', (e) => {
+        if (e.target === addItemModal) {
+          addItemModal.style.display = 'none';
+          addItemForm.reset();
+        }
+      });
+
+      // Add custom item form submission
+      addItemForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+          title: document.getElementById('itemTitle').value,
+          description: document.getElementById('itemDescription').value,
+          study_action: document.getElementById('itemAction').value,
+          priority: document.getElementById('itemPriority').value,
+          estimated_time: document.getElementById('itemTime').value,
+          note_id: document.getElementById('itemNote').value || null
+        };
+        
+        try {
+          const response = await fetch('/api/add-schedule-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to add item');
+          }
+          
+          // Close modal and refresh
+          addItemModal.style.display = 'none';
+          addItemForm.reset();
+          location.reload();
+          
+        } catch (error) {
+          alert('Error adding item: ' + error.message);
+        }
+      });
+
+      // Handle schedule item interactions
+      document.addEventListener('click', async (e) => {
+        // Toggle completion
+        if (e.target.classList.contains('complete-checkbox')) {
+          const scheduleItem = e.target.closest('.schedule-item');
+          const itemId = scheduleItem.dataset.itemId;
+          
+          try {
+            const response = await fetch(`/api/toggle-schedule-item/${itemId}`, {
+              method: 'POST'
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.completed) {
+                scheduleItem.classList.add('completed');
+              } else {
+                scheduleItem.classList.remove('completed');
+              }
+            }
+          } catch (error) {
+            console.error('Error toggling completion:', error);
+            e.target.checked = !e.target.checked; // Revert checkbox
+          }
+        }
+        
+        // Study action buttons
+        if (e.target.classList.contains('study-action-btn')) {
+          const action = e.target.dataset.action;
+          const noteId = e.target.dataset.noteId;
+          
+          if (noteId) {
+            window.location.href = `/${action}/${noteId}`;
+          } else {
+            window.location.href = `/${action}`;
+          }
+        }
+        
+        // Delete schedule item
+        if (e.target.classList.contains('delete-schedule-btn')) {
+          if (confirm('Are you sure you want to delete this schedule item?')) {
+            const scheduleItem = e.target.closest('.schedule-item');
+            const itemId = scheduleItem.dataset.itemId;
+            
+            try {
+              const response = await fetch(`/api/delete-schedule-item/${itemId}`, {
+                method: 'DELETE'
+              });
+              
+              if (response.ok) {
+                scheduleItem.remove();
+                
+                // Check if schedule is now empty
+                const remainingItems = document.querySelectorAll('.schedule-item');
+                if (remainingItems.length === 0) {
+                  location.reload(); // Refresh to show empty state
+                }
+              }
+            } catch (error) {
+              console.error('Error deleting item:', error);
+              alert('Failed to delete item');
+            }
+          }
+        }
+      });
+
       // Auto-hide flash messages after 5 seconds
       setTimeout(() => {
         const flashMessages = document.querySelectorAll('[style*="position: fixed"]');
@@ -256,7 +1002,6 @@
             const progressBar = document.getElementById('progressBar');
             
             if (data.expired) {
-              // Redirect to trial expired page
               window.location.href = '/trial-expired';
               return;
             }
@@ -266,7 +1011,6 @@
             }
             
             if (progressBar) {
-              // Calculate progress percentage (10 minutes = 600 seconds)
               const totalSeconds = 600;
               const remainingSeconds = data.remaining_seconds;
               const progressPercent = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
@@ -278,7 +1022,6 @@
           });
       }
 
-      // Update timer every 10 seconds
       updateTrialTimer();
       setInterval(updateTrialTimer, 10000);
       {% endif %}
