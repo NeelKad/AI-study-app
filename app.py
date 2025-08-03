@@ -446,6 +446,28 @@ def add_note():
     flash("Note saved successfully!", "success")
     return redirect(url_for('dashboard'))
 
+@app.route('/delete-note/<int:note_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def delete_note(note_id):
+    """Delete a note"""
+    try:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        
+        if not note:
+            return jsonify({"error": "Note not found or access denied"}), 404
+        
+        # Also delete any schedule items related to this note
+        StudyScheduleItem.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
+        db.session.delete(note)
+        db.session.commit()
+        
+        return jsonify({"message": "Note deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/note/<int:note_id>')
 @login_required
 @trial_required
