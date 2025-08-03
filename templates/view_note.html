@@ -1,68 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>{{ title }} - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
-  <body>
-    <div class="container" style="max-width: 700px">
-      <a href="{{ url_for('dashboard') }}" id="backBtn"
-        >&larr; Back to Dashboard</a
-      >
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ title }} - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .note-container {
+      white-space: pre-wrap;
+      background: #fff9db;
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 0 35px rgba(234, 174, 0, 0.35);
+      color: #5a3e00;
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      max-height: 250px; /* Collapsed height */
+      overflow: hidden;
+      position: relative;
+      transition: max-height 0.4s ease;
+    }
 
-      <h1>{{ title }}</h1>
+    .note-container.expanded {
+      max-height: 1000px; /* Expand fully */
+    }
 
-      <div
-        style="
-          white-space: pre-wrap;
-          background: #fff9db;
-          padding: 20px;
-          border-radius: 20px;
-          box-shadow: 0 0 35px rgba(234, 174, 0, 0.35);
-          color: #5a3e00;
-          font-weight: 600;
-          font-size: 1.1rem;
-          margin-bottom: 30px;
-        "
-      >
-        {{ content }}
-      </div>
+    .read-more-btn {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+      background: #fbbf24;
+      color: #5a3e00;
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
 
-      <div id="actionButtons">
-        <p>Choose an action for this note:</p>
-        <button class="action-btn" onclick="navigateTo('flashcards')">
-          Flashcards
-        </button>
-        <button class="action-btn" onclick="navigateTo('questions')">
-          Question Generator
-        </button>
-        <button class="action-btn" onclick="navigateTo('summarise')">
-          Summarise Notes
-        </button>
-        <button class="action-btn" onclick="navigateTo('pastpaper')">
-          Generate Practice Paper
-        </button>
-        <button class="action-btn" onclick="navigateTo('tutor')">
-          AI Study Tutor
-        </button>
-      </div>
+    .read-more-btn:hover {
+      background: #f59e0b;
+    }
+
+    #actionButtons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .action-btn {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      transition: background 0.3s;
+    }
+
+    .action-btn:hover {
+      background: var(--accent-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width: 700px;">
+    <a href="{{ url_for('dashboard') }}" id="backBtn">&larr; Back to Dashboard</a>
+    <h1>{{ title }}</h1>
+
+    <div id="noteContent" class="note-container">
+      {{ content }}
     </div>
+    
+    {% if content|length > 400 %}
+    <button id="toggleBtn" class="read-more-btn">Read More</button>
+    {% endif %}
 
-    <script>
-      const noteContent = {{ content | tojson | safe }};
-      const noteId = {{ note_id }};
+    <div id="actionButtons" style="margin-top: 20px;">
+      <p style="width: 100%; text-align: center; font-weight: bold;">Choose an action for this note:</p>
+      <button class="action-btn" onclick="navigateTo('flashcards')">Flashcards</button>
+      <button class="action-btn" onclick="navigateTo('questions')">Question Generator</button>
+      <button class="action-btn" onclick="navigateTo('summarise')">Summarise Notes</button>
+      <button class="action-btn" onclick="navigateTo('pastpaper')">Generate Practice Paper</button>
+      <button class="action-btn" onclick="navigateTo('tutor')">AI Study Tutor</button>
+    </div>
+  </div>
 
-      function navigateTo(action) {
-        // Set the note content in sessionStorage for the JavaScript to use
-        sessionStorage.setItem("processedNotes", noteContent);
-        
-        // Navigate to the route with note_id
-        window.location.href = `/${action}/${noteId}`;
-      }
-    </script>
-  </body>
+  <script>
+    const noteContent = {{ content | tojson | safe }};
+    const noteId = {{ note_id }};
+    const toggleBtn = document.getElementById("toggleBtn");
+    const noteBox = document.getElementById("noteContent");
+
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", () => {
+        noteBox.classList.toggle("expanded");
+        toggleBtn.textContent = noteBox.classList.contains("expanded") ? "Read Less" : "Read More";
+      });
+    }
+
+    function navigateTo(action) {
+      sessionStorage.setItem("processedNotes", noteContent);
+      window.location.href = `/${action}/${noteId}`;
+    }
+  </script>
+</body>
 </html>
