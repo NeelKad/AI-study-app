@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, session
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
 from io import BytesIO
 from fpdf import FPDF
 from openai import OpenAI
@@ -12,45 +12,33 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from functools import wraps
 
-# Fix SSL cert issue with openai on some platforms
+# SSL fix
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 app = Flask(__name__)
-
-# Secret key for session cookies — set this securely in your environment!
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
 
-# Database configuration
+# Database config
 DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
-# Initialize OpenAI client with your API key from environment
+# OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
 login_manager = LoginManager()
 login_manager.login_view = "login"
 login_manager.init_app(app)
 
-TRIAL_LENGTH_MINUTES = 10
-ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")  # Set this env var securely
-
-
-# User model with trial system
+# --- MODELS ---
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
-    
-    # Trial system fields
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     trial_expires_at = db.Column(db.DateTime, nullable=True)
     has_unlimited_access = db.Column(db.Boolean, default=False)
@@ -68,19 +56,15 @@ class User(UserMixin, db.Model):
     def get_time_remaining(self):
         if self.has_unlimited_access:
             return "Unlimited"
-        
         if self.trial_expires_at is None:
             return "No trial expiry set"
-        
         if self.is_trial_expired():
             return "Expired"
-        
         remaining = self.trial_expires_at - datetime.utcnow()
         minutes = int(remaining.total_seconds() // 60)
         seconds = int(remaining.total_seconds() % 60)
         return f"{minutes}m {seconds}s"
 
-# Note model
 class Note(db.Model):
     __tablename__ = 'notes'
     id = db.Column(db.Integer, primary_key=True)
@@ -88,7 +72,6 @@ class Note(db.Model):
     title = db.Column(db.String(255))
     content = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-
     user = db.relationship('User', backref='notes')
 
 @login_manager.user_loader
@@ -99,21 +82,19 @@ def load_user(user_id):
 def create_tables():
     db.create_all()
 
-# Decorator to check trial status, redirect to trial expired page if expired
+# --- DECORATOR ---
 def trial_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for('login'))
-        
         if current_user.is_trial_expired():
+            flash('Your trial has expired! Enter admin key to unlock.', 'error')
             return redirect(url_for('trial_expired'))
-        
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Auth routes ---
-
+# --- AUTH ROUTES ---
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -123,7 +104,7 @@ def signup():
             flash('Email already exists.', 'error')
             return render_template('signup.html')
         hashed_pw = generate_password_hash(password)
-        trial_expiry = datetime.utcnow() + timedelta(minutes=TRIAL_LENGTH_MINUTES)
+        trial_expiry = datetime.utcnow() + timedelta(minutes=10)  # 10 min trial
         new_user = User(email=email, password=hashed_pw, trial_expires_at=trial_expiry)
         db.session.add(new_user)
         db.session.commit()
@@ -138,9 +119,8 @@ def login():
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            # Set trial expiration on first login if missing and no unlimited access
             if user.trial_expires_at is None and not user.has_unlimited_access:
-                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=TRIAL_LENGTH_MINUTES)
+                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=10)
                 db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
@@ -153,96 +133,75 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- Trial expired page: allows entering admin key to unlock unlimited access ---
-@app.route('/trial-expired', methods=['GET', 'POST'])
+# --- TRIAL EXPIRED ---
+@app.route('/trial-expired')
 @login_required
 def trial_expired():
-    if request.method == 'POST':
-        entered_key = request.form.get('admin_key')
-        if entered_key == ADMIN_KEY:
-            current_user.has_unlimited_access = True
-            db.session.commit()
-            flash("Admin key accepted! You now have unlimited access.", "success")
-            return redirect(url_for('dashboard'))
-        else:
-            flash("Invalid admin key.", "error")
     return render_template('trial_expired.html', user=current_user)
 
-# --- Admin: grant unlimited access to any user ---
+@app.route('/trial-expired/unlock', methods=['POST'])
+@login_required
+def trial_unlock():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
+    entered_key = request.form.get('admin_key', '')
+
+    if entered_key != ADMIN_KEY:
+        flash('Invalid admin key!', 'error')
+        return redirect(url_for('trial_expired'))
+
+    user = current_user
+    user.has_unlimited_access = True
+    db.session.commit()
+
+    flash('Unlimited access granted! Welcome back.', 'success')
+    return redirect(url_for('dashboard'))
+
+# --- ADMIN ROUTES ---
 @app.route('/admin/grant-access', methods=['GET', 'POST'])
 def admin_grant_access():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
     if request.method == 'POST':
         provided_key = request.form.get('admin_key')
         user_email = request.form.get('user_email')
-        
         if provided_key != ADMIN_KEY:
             flash('Invalid admin key!', 'error')
             return render_template('admin_grant_access.html')
-        
         user = User.query.filter_by(email=user_email).first()
         if not user:
             flash('User not found!', 'error')
             return render_template('admin_grant_access.html')
-        
         user.has_unlimited_access = True
         db.session.commit()
         flash(f'Unlimited access granted to {user_email}!', 'success')
         return render_template('admin_grant_access.html')
-    
     return render_template('admin_grant_access.html')
 
 @app.route('/admin/users')
 def admin_users():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
     provided_key = request.args.get('key')
-    
     if provided_key != ADMIN_KEY:
         return "Access denied", 403
-    
     users = User.query.all()
     return render_template('admin_users.html', users=users)
 
-# --- Trial status API ---
+# --- TRIAL STATUS API ---
 @app.route('/api/trial-status')
 @login_required
 def api_trial_status():
     if current_user.has_unlimited_access:
-        return jsonify({
-            "unlimited": True,
-            "expired": False,
-            "time_remaining": "Unlimited",
-            "remaining_seconds": -1
-        })
-    
+        return jsonify({"unlimited": True, "expired": False, "time_remaining": "Unlimited", "remaining_seconds": -1})
     if current_user.is_trial_expired():
-        return jsonify({
-            "unlimited": False,
-            "expired": True,
-            "time_remaining": "Expired",
-            "remaining_seconds": 0
-        })
-    
+        return jsonify({"unlimited": False, "expired": True, "time_remaining": "Expired", "remaining_seconds": 0})
     if not current_user.trial_expires_at:
-        return jsonify({
-            "unlimited": False,
-            "expired": True,
-            "time_remaining": "No trial expiry set",
-            "remaining_seconds": 0
-        })
-    
+        return jsonify({"unlimited": False, "expired": True, "time_remaining": "No trial expiry set", "remaining_seconds": 0})
     remaining = current_user.trial_expires_at - datetime.utcnow()
     remaining_seconds = int(remaining.total_seconds())
     minutes = remaining_seconds // 60
     seconds = remaining_seconds % 60
-    
-    return jsonify({
-        "unlimited": False,
-        "expired": False,
-        "time_remaining": f"{minutes}m {seconds}s",
-        "remaining_seconds": remaining_seconds
-    })
+    return jsonify({"unlimited": False, "expired": False, "time_remaining": f"{minutes}m {seconds}s", "remaining_seconds": remaining_seconds})
 
-# --- Dashboard & Notes ---
-
+# --- DASHBOARD & NOTES ---
 @app.route('/dashboard')
 @login_required
 @trial_required
@@ -262,34 +221,14 @@ def enter_notes():
 def add_note():
     title = request.form.get('title')
     content = request.form.get('content')
-
     if not title or not content:
         flash("Please provide both title and content.", "error")
         return redirect(url_for('enter_notes'))
-
     note = Note(user_id=current_user.id, title=title, content=content)
     db.session.add(note)
     db.session.commit()
-
     flash("Note saved successfully!", "success")
     return redirect(url_for('dashboard'))
-
-@app.route('/save-note', methods=['POST'])
-@login_required
-@trial_required
-def save_note():
-    data = request.get_json()
-    title = data.get('title', '').strip()
-    content = data.get('content', '').strip()
-
-    if not title or not content:
-        return jsonify({"error": "Title and content are required."}), 400
-
-    note = Note(user_id=current_user.id, title=title, content=content)
-    db.session.add(note)
-    db.session.commit()
-
-    return jsonify({"success": True})
 
 @app.route('/note/<int:note_id>')
 @login_required
@@ -298,19 +237,14 @@ def view_note(note_id):
     note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
     if note:
         return render_template('view_note.html', title=note.title, content=note.content, note_id=note.id)
-    else:
-        flash("Note not found or access denied.", "error")
-        return redirect(url_for('dashboard'))
+    flash("Note not found or access denied.", "error")
+    return redirect(url_for('dashboard'))
 
 @app.route('/')
 def index():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    else:
-        return redirect(url_for('login'))
+    return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
 
-# --- Study Tool Routes with trial protection ---
-
+# --- STUDY TOOLS (UI) ---
 @app.route('/flashcards')
 @app.route('/flashcards/<int:note_id>')
 @login_required
@@ -378,8 +312,7 @@ def my_notes():
     notes = Note.query.filter_by(user_id=current_user.id).all()
     return render_template('my_notes.html', notes=notes)
 
-# --- OpenAI API Routes with trial protection ---
-
+# --- OPENAI API ROUTES ---
 @app.route('/api/flashcards', methods=['POST'])
 @login_required
 @trial_required
@@ -389,23 +322,14 @@ def api_flashcards():
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        "Generate flashcards from these notes. "
-                        "Output a valid JSON object where keys are terms (strings) and values are short string definitions only, no nested objects."
-                    ),
-                },
+                {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."},
                 {"role": "user", "content": notes}
             ],
             temperature=0.7,
             max_tokens=700
         )
         text = response.choices[0].message.content.strip()
-        try:
-            flashcards = json.loads(text)
-        except json.JSONDecodeError:
-            flashcards = {}
+        flashcards = json.loads(text) if text else {}
     except Exception:
         flashcards = {}
     return jsonify(flashcards)
@@ -433,14 +357,12 @@ def api_grade_question():
     data = request.json
     question = data.get('question', '')
     answer = data.get('answer', '')
-    notes = data.get('notes', '')
     prompt = (
         f"Grade this answer: '{answer}' for the question: '{question}'. "
-        "Reply EXACTLY in this format (no extra text):\n"
+        "Reply EXACTLY in this format:\n"
         "score: <number from 0 to 10>\n"
-        "improvement: <suggestion for improvement>\n"
-        "model answer: <model answer>\n"
-        "Do not include the score for this model answer."
+        "improvement: <suggestion>\n"
+        "model answer: <model answer>"
     )
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -452,13 +374,10 @@ def api_grade_question():
     score_match = re.search(r'score:\s*([0-9]+(?:\.[0-9]+)?)', text, re.IGNORECASE)
     improvement_match = re.search(r'improvement:\s*(.*?)(?:\nmodel answer:|$)', text, re.IGNORECASE | re.DOTALL)
     model_answer_match = re.search(r'model answer:\s*(.*)', text, re.IGNORECASE | re.DOTALL)
-    grade_score = score_match.group(1) if score_match else "N/A"
-    improvement = improvement_match.group(1).strip() if improvement_match else "No suggestion."
-    model_answer = model_answer_match.group(1).strip() if model_answer_match else "No model answer provided."
     return jsonify({
-        "grade_score": grade_score,
-        "improvement": improvement,
-        "model_answer": model_answer
+        "grade_score": score_match.group(1) if score_match else "N/A",
+        "improvement": improvement_match.group(1).strip() if improvement_match else "No suggestion.",
+        "model_answer": model_answer_match.group(1).strip() if model_answer_match else "No model answer provided."
     })
 
 @app.route('/api/summarise', methods=['POST'])
@@ -485,16 +404,7 @@ def api_pastpaper():
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Generate a past paper based on these notes:\n{notes}. "
-                    "It should be in this order: 20 multiple choice questions, 20 True and False questions, "
-                    "8 short answer questions, and 8 application questions. "
-                    "It should take at least 1 hour to complete. Make sure the questions are clear and concise, "
-                    "and cover a range of topics from the notes provided."
-                ),
-            }
+            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. Include MCQs, True/False, short and application questions."}
         ]
     )
     past_paper = response.choices[0].message.content
@@ -504,54 +414,22 @@ def api_pastpaper():
     for line in past_paper.split("\n"):
         pdf.multi_cell(0, 10, line)
     pdf_bytes = pdf.output(dest='S').encode('latin1')
-    pdf_buffer = BytesIO(pdf_bytes)
-    return send_file(
-        pdf_buffer,
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name="past_paper.pdf"
-    )
+    return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
 
 @app.route('/api/tutor_chat', methods=['POST'])
 @login_required
 @trial_required
 def api_tutor_chat():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        user_message = data.get('message', '').strip()
-        conversation = data.get('conversation', [])
-        notes = data.get('notes', '')
-        
-        if not user_message:
-            return jsonify({"error": "Message is empty"}), 400
-
-        # Build the system prompt
-        system_prompt = (
-            "You are a professional, patient, and knowledgeable AI study tutor. "
-            "You help students understand concepts, answer questions, and provide clear explanations. "
-        )
-        
-        if notes:
-            system_prompt += f"Notes for context:\n{notes}"
-        
-        messages = [{"role": "system", "content": system_prompt}]
-        messages.extend(conversation)
-        messages.append({"role": "user", "content": user_message})
-
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=600,
-        )
-        reply = response.choices[0].message.content.strip()
-        return jsonify({"response": reply})
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    data = request.json
+    user_message = data.get('message', '').strip()
+    conversation = data.get('conversation', [])
+    notes = data.get('notes', '')
+    system_prompt = "You are a professional AI tutor."
+    if notes:
+        system_prompt += f"\nContext notes:\n{notes}"
+    messages = [{"role": "system", "content": system_prompt}] + conversation + [{"role": "user", "content": user_message}]
+    response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages, temperature=0.7, max_tokens=600)
+    return jsonify({"response": response.choices[0].message.content.strip()})
 
 if __name__ == '__main__':
     app.run(debug=True)
