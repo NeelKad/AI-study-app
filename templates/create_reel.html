@@ -30,6 +30,7 @@
       font-weight: 700;
       color: #e0e7ff;
       margin-bottom: 1rem;
+      text-align: center;
     }
     .form-container {
       background: rgba(31, 41, 55, 0.6);
@@ -53,6 +54,7 @@
       background: #1e293b;
       color: #f9fafb;
       font-size: 0.95rem;
+      box-sizing: border-box;
     }
     .form-container select:focus, .form-container textarea:focus {
       outline: 2px solid #6366f1;
@@ -70,22 +72,39 @@
       cursor: pointer;
       transition: background 0.3s, transform 0.2s;
     }
-    .btn-generate:hover {
+    .btn-generate:hover:not(:disabled) {
       background: linear-gradient(90deg, #4f46e5, #6d28d9);
       transform: scale(1.02);
+    }
+    .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
     .preview-container {
       text-align: center;
       margin-top: 2rem;
     }
-    .preview-video {
-      width: 100%;
-      max-width: 320px;
-      height: auto;
-      border-radius: 1rem;
-      background: #1f2937;
-      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    .status-message {
+      padding: 1rem;
+      border-radius: 0.5rem;
       margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    .status-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .status-error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    .status-info {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.4);
     }
     .btn-download {
       background: #10b981;
@@ -96,61 +115,119 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.3s;
+      text-decoration: none;
+      display: inline-block;
     }
     .btn-download:hover {
       background: #059669;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #374151;
+      border-top: 2px solid #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body style="max-width: 900px; margin: 0 auto;">
   <!-- Back Navigation -->
   <div class="header">
-    <a href="{{ url_for('view_note', note_id=note_id) }}">&larr; Back</a>
+    <a href="{% if note_id %}{{ url_for('view_note', note_id=note_id) }}{% else %}{{ url_for('dashboard') }}{% endif %}">&larr; Back</a>
   </div>
 
   <!-- Page Title -->
-  <h1>Create Instagram Reel</h1>
+  <h1>🎬 Create Instagram Reel</h1>
+
+  <!-- Status Messages -->
+  <div id="statusMessage" style="display: none;"></div>
 
   <!-- Customization Form -->
   <div class="form-container">
     <label for="noteContent">Note Content</label>
-    <textarea id="noteContent" rows="6" readonly>{{ content }}</textarea>
+    <textarea id="noteContent" rows="6" readonly>{{ note_content if note_content else "No note content available. Please select a note first." }}</textarea>
 
     <label for="style">Choose Style</label>
     <select id="style">
-      <option value="aesthetic">Aesthetic (Gradient + Minimal Text)</option>
-      <option value="bold">Bold (High Contrast, Large Text)</option>
-      <option value="study-vibes">Study Vibes (Pastel + Soft Background)</option>
+      <option value="aesthetic">Aesthetic (Purple Gradient)</option>
+      <option value="bold">Bold (Dark & High Contrast)</option>
+      <option value="study-vibes">Study Vibes (Blue Tones)</option>
     </select>
 
     <label for="music">Background Music</label>
     <select id="music">
+      <option value="none">No Music (Recommended)</option>
       <option value="lofi">Lofi Beats</option>
       <option value="energetic">Energetic</option>
       <option value="calm">Calm Piano</option>
     </select>
 
-    <button class="btn-generate" onclick="generateReel()">Generate Reel</button>
+    <button class="btn-generate" onclick="generateReel()" {% if not note_content %}disabled{% endif %}>
+      Generate Reel
+    </button>
+    
+    {% if not note_content %}
+    <p style="color: #fca5a5; text-align: center; margin-top: 1rem; font-size: 0.875rem;">
+      Please select a note from your dashboard to create a reel.
+    </p>
+    {% endif %}
   </div>
 
   <!-- Preview Section -->
-  <div class="preview-container">
-    <video id="reelPreview" class="preview-video" controls style="display: none;"></video>
-    <button id="downloadBtn" class="btn-download" style="display: none;">Download Reel</button>
+  <div class="preview-container" id="previewContainer" style="display: none;">
+    <h3 style="color: #e0e7ff; margin-bottom: 1rem;">Your Reel is Ready!</h3>
+    <div style="margin-bottom: 1rem;">
+      <a id="downloadBtn" class="btn-download" href="#" download="study_reel.mp4">
+        📱 Download Reel
+      </a>
+    </div>
+    <p style="color: #94a3b8; font-size: 0.875rem;">
+      Perfect for sharing on Instagram, TikTok, or other social platforms!
+    </p>
   </div>
 
   <script>
-    const noteContent = {{ content | tojson | safe }};
-    const noteId = {{ note_id }};
+    const noteContent = {{ note_content | tojson | safe }};
+    const noteId = {{ note_id if note_id else 'null' }};
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('statusMessage');
+      statusDiv.innerHTML = message;
+      statusDiv.className = `status-message status-${type}`;
+      statusDiv.style.display = 'block';
+      
+      // Auto-hide after 5 seconds for success messages
+      if (type === 'success') {
+        setTimeout(() => {
+          statusDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
 
     async function generateReel() {
+      if (!noteContent || noteContent.trim() === "") {
+        showStatus("❌ No note content available. Please select a note first.", 'error');
+        return;
+      }
+
       const style = document.getElementById("style").value;
       const music = document.getElementById("music").value;
-
-      // Disable button while generating
+      
+      // Update button state
       const btn = document.querySelector(".btn-generate");
-      btn.textContent = "Generating...";
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="loading-spinner"></span>Generating Reel...';
       btn.disabled = true;
+
+      // Show status
+      showStatus("🎬 Creating your reel... This may take 30-60 seconds.", 'info');
 
       try {
         const response = await fetch("/api/create_reel", {
@@ -167,36 +244,39 @@
         });
 
         if (!response.ok) {
-          alert("Error generating reel. Try again.");
-          btn.textContent = "Generate Reel";
-          btn.disabled = false;
-          return;
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || `Server error: ${response.status}`);
         }
 
+        // Handle the file download
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
 
-        // Show video preview
-        const preview = document.getElementById("reelPreview");
-        preview.src = url;
-        preview.style.display = "block";
-
-        // Show download button
+        // Show download section
         const downloadBtn = document.getElementById("downloadBtn");
-        downloadBtn.style.display = "inline-block";
-        downloadBtn.onclick = () => {
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "study_reel.mp4";
-          a.click();
-        };
+        downloadBtn.href = url;
+        
+        const previewContainer = document.getElementById("previewContainer");
+        previewContainer.style.display = "block";
+
+        showStatus("✅ Reel created successfully! Click the download button below.", 'success');
+
+        // Auto-scroll to preview
+        previewContainer.scrollIntoView({ behavior: 'smooth' });
 
       } catch (error) {
-        alert("Failed to create reel: " + error.message);
+        console.error('Reel generation error:', error);
+        showStatus(`❌ Failed to create reel: ${error.message}`, 'error');
       } finally {
-        btn.textContent = "Generate Reel";
+        // Reset button
+        btn.innerHTML = originalText;
         btn.disabled = false;
       }
+    }
+
+    // Show initial message if no content
+    if (!noteContent || noteContent.trim() === "") {
+      showStatus("ℹ️ Select a note from your dashboard to create a reel from your study content.", 'info');
     }
   </script>
 </body>
