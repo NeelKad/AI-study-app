@@ -27,6 +27,51 @@
 
     <!-- Main Content -->
     <main style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+      <!-- Trial Status Banner -->
+      {% if not user.has_unlimited_access %}
+      <div id="trialBanner" style="
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
+        border: 2px solid rgba(245, 158, 11, 0.4);
+        border-radius: 1rem;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      ">
+        <div style="position: relative; z-index: 1;">
+          {% if user.is_trial_expired() %}
+            <h3 style="color: #ef4444; margin: 0 0 0.5rem 0; font-size: 1.25rem;">⏰ Trial Expired</h3>
+            <p style="color: #fca5a5; margin: 0; font-weight: 600;">
+              Your 10-minute trial has ended. Contact admin for unlimited access!
+            </p>
+          {% else %}
+            <h3 style="color: #f59e0b; margin: 0 0 0.5rem 0; font-size: 1.25rem;">⏱️ Trial Active</h3>
+            <p style="color: #fcd34d; margin: 0 0 1rem 0; font-weight: 600;">
+              You're in trial mode! Time remaining: <span id="timeRemaining" style="font-weight: 800;">{{ user.get_time_remaining() }}</span>
+            </p>
+            <div style="background: rgba(245, 158, 11, 0.3); height: 4px; border-radius: 2px; overflow: hidden;">
+              <div id="progressBar" style="background: #f59e0b; height: 100%; border-radius: 2px; transition: width 1s ease;"></div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div style="
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));
+        border: 2px solid rgba(16, 185, 129, 0.4);
+        border-radius: 1rem;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+      ">
+        <h3 style="color: #10b981; margin: 0 0 0.5rem 0; font-size: 1.25rem;">🚀 Unlimited Access</h3>
+        <p style="color: #6ee7b7; margin: 0; font-weight: 600;">
+          You have unlimited access to all features!
+        </p>
+      </div>
+      {% endif %}
+
       <!-- Welcome Section -->
       <div style="margin-bottom: 3rem;">
         <h1 style="margin-bottom: 0.5rem;">Welcome back</h1>
@@ -173,6 +218,23 @@
           transform: translateX(100%);
         }
       }
+
+      /* Trial banner pulse animation */
+      #trialBanner::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        animation: shimmer 3s infinite;
+      }
+
+      @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+      }
     </style>
 
     <script>
@@ -183,6 +245,43 @@
           msg.style.animation = 'slideIn 0.3s ease-out, fadeOut 0.3s ease-out 0s forwards';
         });
       }, 5000);
+
+      // Trial timer functionality
+      {% if not user.has_unlimited_access and not user.is_trial_expired() %}
+      function updateTrialTimer() {
+        fetch('/api/trial-status')
+          .then(response => response.json())
+          .then(data => {
+            const timeElement = document.getElementById('timeRemaining');
+            const progressBar = document.getElementById('progressBar');
+            
+            if (data.expired) {
+              // Redirect to trial expired page
+              window.location.href = '/trial-expired';
+              return;
+            }
+            
+            if (timeElement) {
+              timeElement.textContent = data.time_remaining;
+            }
+            
+            if (progressBar) {
+              // Calculate progress percentage (10 minutes = 600 seconds)
+              const totalSeconds = 600;
+              const remainingSeconds = data.remaining_seconds;
+              const progressPercent = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
+              progressBar.style.width = progressPercent + '%';
+            }
+          })
+          .catch(error => {
+            console.error('Error updating trial timer:', error);
+          });
+      }
+
+      // Update timer every 10 seconds
+      updateTrialTimer();
+      setInterval(updateTrialTimer, 10000);
+      {% endif %}
     </script>
   </body>
 </html>
