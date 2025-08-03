@@ -42,76 +42,40 @@ login_manager = LoginManager()
 login_manager.login_view = "login"
 login_manager.init_app(app)
 
-# Blocked disposable email domains
-BLOCKED_DOMAINS = [
-    '10minutemail.com', 'guerrillamail.com', 'mailinator.com', 
-    'tempmail.org', 'yopmail.com', 'throwaway.email', 'temp-mail.org',
-    'sharklasers.com', 'guerrillamail.info', 'guerrillamail.biz',
-    'guerrillamail.net', 'guerrillamail.org', 'grr.la', 'guerrillamailblock.com',
-    'maildrop.cc', 'mohmal.com', 'emailondeck.com', 'fakeinbox.com',
-    'spambox.us', 'spamavert.com', 'trashmail.com', 'incognitomail.org'
-]
-
-# User model with trial system and anti-abuse
+# User model with trial system
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     
-    # Trial system fields
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    trial_expires_at = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(minutes=10))
-    has_unlimited_access = db.Column(db.Boolean, default=False)
     
-    # Anti-abuse fields
-    ip_address = db.Column(db.String(45))
-    device_fingerprint = db.Column(db.String(64))
+    # Set default trial expiry to 20 minutes after creation
+    trial_expires_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(minutes=20))
+    has_unlimited_access = db.Column(db.Boolean, default=False)
 
     def get_id(self):
         return str(self.id)
-
-    from datetime import datetime
-
+    
     def is_trial_expired(self):
+        if self.has_unlimited_access:
+            return False
         if self.trial_expires_at is None:
-        # If no expiry date, treat as not expired or expired, depending on your logic
-            return False  # or True if you want to restrict access when expiry is missing
+            return True
         return datetime.utcnow() > self.trial_expires_at
-
     
-
-    
-    
-    from datetime import datetime, timedelta
-
     def get_time_remaining(self):
+        if self.has_unlimited_access:
+            return "Unlimited"
         if self.trial_expires_at is None:
-            # Return some default string or timedelta when no expiry is set
             return "No trial expiry set"
-            remaining = self.trial_expires_at - datetime.utcnow()
-        # Optionally handle negative remaining time:
-        if remaining.total_seconds() < 0:
-            return "Trial expired"
-        return str(remaining).split('.')[0]  # format nicely, remove microseconds
-
-        
         if self.is_trial_expired():
             return "Expired"
-        
         remaining = self.trial_expires_at - datetime.utcnow()
         minutes = int(remaining.total_seconds() // 60)
         seconds = int(remaining.total_seconds() % 60)
         return f"{minutes}m {seconds}s"
-
-# Trial IP tracking model
-class TrialIP(db.Model):
-    __tablename__ = 'trial_ips'
-    id = db.Column(db.Integer, primary_key=True)
-    ip_address = db.Column(db.String(45), unique=True)
-    first_trial_at = db.Column(db.DateTime, default=datetime.utcnow)
-    trial_count = db.Column(db.Integer, default=1)
-    last_trial_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Note model
 class Note(db.Model):
@@ -132,40 +96,6 @@ def load_user(user_id):
 def create_tables():
     db.create_all()
 
-# Utility functions for anti-abuse
-def get_client_ip():
-    """Get the real IP address, accounting for proxies"""
-    if request.environ.get('HTTP_X_FORWARDED_FOR'):
-        # Get the first IP if there are multiple (in case of multiple proxies)
-        return request.environ.get('HTTP_X_FORWARDED_FOR').split(',')[0].strip()
-    elif request.environ.get('HTTP_X_REAL_IP'):
-        return request.environ.get('HTTP_X_REAL_IP')
-    else:
-        return request.environ.get('REMOTE_ADDR')
-
-def is_trial_allowed(email, ip_address, device_fingerprint=None):
-    """Check if a trial is allowed based on multiple factors"""
-    
-    # Check email domain
-    domain = email.split('@')[1].lower()
-    if domain in BLOCKED_DOMAINS:
-        return False, "Please use a permanent email address."
-    
-    # Check IP address (allow 1 trial per IP)
-    trial_ip = TrialIP.query.filter_by(ip_address=ip_address).first()
-    if trial_ip and trial_ip.trial_count >= 1:
-        # Allow if it's been more than 24 hours (optional)
-        if datetime.utcnow() - trial_ip.last_trial_at < timedelta(hours=24):
-            return False, "Trial already used from this location. Contact admin for access."
-    
-    # Check device fingerprint (if provided)
-    if device_fingerprint:
-        existing_user = User.query.filter_by(device_fingerprint=device_fingerprint).first()
-        if existing_user and not existing_user.has_unlimited_access:
-            return False, "Trial already used on this device."
-    
-    return True, "Trial allowed"
-
 # Decorator to check trial status
 def trial_required(f):
     @wraps(f)
@@ -179,8 +109,25 @@ def trial_required(f):
         
         return f(*args, **kwargs)
     return decorated_function
-from flask import request
 
+# Temporary route to fix existing users with NULL trial_expires_at
+@app.route('/fix-trial-expiry')
+def fix_trial_expiry():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
+    key = request.args.get('key')
+    if key != ADMIN_KEY:
+        return "Access Denied", 403
+
+    try:
+        db.session.execute("""
+            UPDATE users
+            SET trial_expires_at = NOW() + INTERVAL '20 minutes'
+            WHERE trial_expires_at IS NULL
+        """)
+        db.session.commit()
+        return "Trial expiry dates fixed for users with NULL values."
+    except Exception as e:
+        return f"Error: {str(e)}", 500
 
 # --- Auth routes ---
 
@@ -189,45 +136,15 @@ def signup():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        device_fingerprint = request.form.get('device_fingerprint', '')
-        
-        # Get user's IP
-        user_ip = get_client_ip()
-        
-        # Check if user already exists
         if User.query.filter_by(email=email).first():
             flash('Email already exists.', 'error')
             return render_template('signup.html')
-        
-        # Check if trial is allowed
-        allowed, message = is_trial_allowed(email, user_ip, device_fingerprint)
-        if not allowed:
-            flash(message, 'error')
-            return render_template('signup.html')
-        
-        # Create user
         hashed_pw = generate_password_hash(password)
-        new_user = User(
-            email=email, 
-            password=hashed_pw,
-            ip_address=user_ip,
-            device_fingerprint=device_fingerprint
-        )
+        new_user = User(email=email, password=hashed_pw)
         db.session.add(new_user)
-        
-        # Track IP usage
-        trial_ip = TrialIP.query.filter_by(ip_address=user_ip).first()
-        if trial_ip:
-            trial_ip.trial_count += 1
-            trial_ip.last_trial_at = datetime.utcnow()
-        else:
-            trial_ip = TrialIP(ip_address=user_ip)
-            db.session.add(trial_ip)
-        
         db.session.commit()
-        flash('Account created! You have 10 minutes to try all features.', 'success')
+        flash('Account created! Please log in.', 'success')
         return redirect(url_for('login'))
-    
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -257,7 +174,6 @@ def trial_expired():
 
 @app.route('/admin/grant-access', methods=['GET', 'POST'])
 def admin_grant_access():
-    # Set your secret admin key here
     ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
     
     if request.method == 'POST':
@@ -291,43 +207,6 @@ def admin_users():
     users = User.query.all()
     return render_template('admin_users.html', users=users)
 
-@app.route('/admin/trial-stats')
-def admin_trial_stats():
-    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
-    provided_key = request.args.get('key')
-    
-    if provided_key != ADMIN_KEY:
-        return "Access denied", 403
-    
-    # Get statistics
-    total_users = User.query.count()
-    unlimited_users = User.query.filter_by(has_unlimited_access=True).count()
-    active_trials = User.query.filter(
-        User.trial_expires_at > datetime.utcnow(),
-        User.has_unlimited_access == False
-    ).count()
-    expired_trials = User.query.filter(
-        User.trial_expires_at <= datetime.utcnow(),
-        User.has_unlimited_access == False
-    ).count()
-    
-    # Get IPs with multiple attempts
-    repeat_ips = TrialIP.query.filter(TrialIP.trial_count > 1).all()
-    
-    # Get recent signups
-    recent_users = User.query.order_by(User.created_at.desc()).limit(20).all()
-    
-    stats = {
-        'total_users': total_users,
-        'unlimited_users': unlimited_users,
-        'active_trials': active_trials,
-        'expired_trials': expired_trials,
-        'repeat_ips': repeat_ips,
-        'recent_users': recent_users
-    }
-    
-    return render_template('admin_trial_stats.html', stats=stats)
-
 @app.route('/api/trial-status')
 @login_required
 def api_trial_status():
@@ -338,7 +217,15 @@ def api_trial_status():
             "time_remaining": "Unlimited",
             "remaining_seconds": -1
         })
-    
+
+    if current_user.trial_expires_at is None:
+        return jsonify({
+            "unlimited": False,
+            "expired": True,
+            "time_remaining": "No trial expiry set",
+            "remaining_seconds": 0
+        })
+
     if current_user.is_trial_expired():
         return jsonify({
             "unlimited": False,
@@ -346,13 +233,12 @@ def api_trial_status():
             "time_remaining": "Expired",
             "remaining_seconds": 0
         })
-    
-    # Calculate remaining time
+
     remaining = current_user.trial_expires_at - datetime.utcnow()
     remaining_seconds = int(remaining.total_seconds())
     minutes = remaining_seconds // 60
     seconds = remaining_seconds % 60
-    
+
     return jsonify({
         "unlimited": False,
         "expired": False,
@@ -640,88 +526,36 @@ def api_tutor_chat():
         if not data:
             return jsonify({"error": "No data provided"}), 400
             
-        user_message = data.get('message', '').strip()
-        conversation = data.get('conversation', [])
-        notes = data.get('notes', '')
-        
+        user_message = data.get("message", "")
         if not user_message:
-            return jsonify({"error": "Message is empty"}), 400
-
-        # Build the system prompt
-        system_prompt = (
-            "You are a professional, patient, and knowledgeable AI study tutor. "
-            "You help students understand concepts, answer questions, and provide clear explanations. "
+            return jsonify({"error": "Message required"}), 400
+        
+        # Simple tutor chat prompt with optional notes context
+        notes = data.get("notes", "")
+        prompt = (
+            f"You are a helpful tutor. Answer the user's question concisely.\n"
+            f"User's question: {user_message}\n"
+            f"Relevant notes: {notes}\n"
         )
-        
-        if notes:
-            system_prompt += (
-                f"Use the study notes below to help the user with accurate information:\n\n"
-                f"Study notes:\n{notes}\n\n"
-                "Base your answers on these notes when relevant, but you can also provide general knowledge to help explain concepts."
-            )
-        else:
-            system_prompt += (
-                "The user doesn't have specific study notes loaded, so help them with general study questions "
-                "and provide clear, educational explanations."
-            )
-
-        # Prepare messages for OpenAI
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        # Add conversation history (limit to last 10 exchanges to avoid token limits)
-        if conversation:
-            recent_conversation = conversation[-20:]  # Last 20 messages (10 exchanges)
-            messages.extend(recent_conversation)
-        
-        # Add current user message
-        messages.append({"role": "user", "content": user_message})
-
-        # Make API call to OpenAI
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=messages,
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=500,
-            timeout=30
+            max_tokens=400
         )
-        
-        assistant_message = response.choices[0].message.content.strip()
-        
-        if not assistant_message:
-            return jsonify({"error": "Empty response from AI"}), 500
-            
-        return jsonify({"reply": assistant_message})
-        
+        answer = response.choices[0].message.content.strip()
+        return jsonify({"answer": answer})
     except Exception as e:
-        print(f"Tutor Chat API error: {str(e)}")
-        return jsonify({
-            "error": "I'm having trouble processing your request right now. Please try again in a moment."
-        }), 500
-@app.route('/fix-trial', methods=['GET'])
-def fix_trial():
-    # Simple security: only run if you provide the correct admin key as a query parameter
-    ADMIN_KEY = os.getenv("ADMIN_KEY", "skibidirizzlerz67")  # Make sure this matches your actual admin key
-    
-    provided_key = request.args.get("key")
-    if provided_key != ADMIN_KEY:
-        return "Access Denied", 403
+        return jsonify({"error": str(e)}), 500
 
-    try:
-        # Update all users with NULL trial_expires_at to now + 20 minutes
-        db.session.execute("""
-            UPDATE users
-            SET trial_expires_at = NOW() + INTERVAL '20 minutes'
-            WHERE trial_expires_at IS NULL;
-        """)
-        db.session.commit()
-        return "Trial expiry updated for users with NULL values."
-    except Exception as e:
-        return f"Error: {e}", 500
+# --- Error handling ---
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
