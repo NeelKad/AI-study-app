@@ -82,9 +82,19 @@ class User(UserMixin, db.Model):
     
 
     
+    
+    from datetime import datetime, timedelta
+
     def get_time_remaining(self):
-        if self.has_unlimited_access:
-            return "Unlimited"
+        if self.trial_expires_at is None:
+            # Return some default string or timedelta when no expiry is set
+            return "No trial expiry set"
+            remaining = self.trial_expires_at - datetime.utcnow()
+        # Optionally handle negative remaining time:
+        if remaining.total_seconds() < 0:
+            return "Trial expired"
+        return str(remaining).split('.')[0]  # format nicely, remove microseconds
+
         
         if self.is_trial_expired():
             return "Expired"
@@ -688,4 +698,5 @@ def api_tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
