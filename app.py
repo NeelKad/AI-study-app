@@ -20,16 +20,13 @@ app = Flask(__name__)
 # Secret key for session cookies — set this securely in your environment!
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
 
-# Use DATABASE_URL env var or fallback to sqlite local file for testing
-# Database configuration for Render deployment
+# Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
-    # Render sometimes provides postgres:// but SQLAlchemy needs postgresql://
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
-    # Fallback to SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -49,10 +46,9 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     
+    # NEW FIELDS FOR TRIAL SYSTEM
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Set default trial expiry to 20 minutes after creation
-    trial_expires_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(minutes=20))
+    trial_expires_at = db.Column(db.DateTime, nullable=True)
     has_unlimited_access = db.Column(db.Boolean, default=False)
 
     def get_id(self):
@@ -68,10 +64,13 @@ class User(UserMixin, db.Model):
     def get_time_remaining(self):
         if self.has_unlimited_access:
             return "Unlimited"
+        
         if self.trial_expires_at is None:
             return "No trial expiry set"
+        
         if self.is_trial_expired():
             return "Expired"
+        
         remaining = self.trial_expires_at - datetime.utcnow()
         minutes = int(remaining.total_seconds() // 60)
         seconds = int(remaining.total_seconds() % 60)
@@ -110,25 +109,6 @@ def trial_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Temporary route to fix existing users with NULL trial_expires_at
-@app.route('/fix-trial-expiry')
-def fix_trial_expiry():
-    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
-    key = request.args.get('key')
-    if key != ADMIN_KEY:
-        return "Access Denied", 403
-
-    try:
-        db.session.execute("""
-            UPDATE users
-            SET trial_expires_at = NOW() + INTERVAL '20 minutes'
-            WHERE trial_expires_at IS NULL
-        """)
-        db.session.commit()
-        return "Trial expiry dates fixed for users with NULL values."
-    except Exception as e:
-        return f"Error: {str(e)}", 500
-
 # --- Auth routes ---
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -140,7 +120,8 @@ def signup():
             flash('Email already exists.', 'error')
             return render_template('signup.html')
         hashed_pw = generate_password_hash(password)
-        new_user = User(email=email, password=hashed_pw)
+        trial_expiry = datetime.utcnow() + timedelta(minutes=20)
+        new_user = User(email=email, password=hashed_pw, trial_expires_at=trial_expiry)
         db.session.add(new_user)
         db.session.commit()
         flash('Account created! Please log in.', 'success')
@@ -154,6 +135,10 @@ def login():
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
+            # Set trial expiration on first login if missing and no unlimited access
+            if user.trial_expires_at is None and not user.has_unlimited_access:
+                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=20)
+                db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
         flash('Invalid credentials.', 'error')
@@ -165,13 +150,13 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- Trial System Routes ---
-
+# --- Trial expired page ---
 @app.route('/trial-expired')
 @login_required
 def trial_expired():
     return render_template('trial_expired.html', user=current_user)
 
+# --- Admin: grant unlimited access ---
 @app.route('/admin/grant-access', methods=['GET', 'POST'])
 def admin_grant_access():
     ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
@@ -207,6 +192,7 @@ def admin_users():
     users = User.query.all()
     return render_template('admin_users.html', users=users)
 
+# --- Trial status API ---
 @app.route('/api/trial-status')
 @login_required
 def api_trial_status():
@@ -217,15 +203,7 @@ def api_trial_status():
             "time_remaining": "Unlimited",
             "remaining_seconds": -1
         })
-
-    if current_user.trial_expires_at is None:
-        return jsonify({
-            "unlimited": False,
-            "expired": True,
-            "time_remaining": "No trial expiry set",
-            "remaining_seconds": 0
-        })
-
+    
     if current_user.is_trial_expired():
         return jsonify({
             "unlimited": False,
@@ -233,12 +211,20 @@ def api_trial_status():
             "time_remaining": "Expired",
             "remaining_seconds": 0
         })
-
+    
+    if not current_user.trial_expires_at:
+        return jsonify({
+            "unlimited": False,
+            "expired": True,
+            "time_remaining": "No trial expiry set",
+            "remaining_seconds": 0
+        })
+    
     remaining = current_user.trial_expires_at - datetime.utcnow()
     remaining_seconds = int(remaining.total_seconds())
     minutes = remaining_seconds // 60
     seconds = remaining_seconds % 60
-
+    
     return jsonify({
         "unlimited": False,
         "expired": False,
@@ -314,7 +300,7 @@ def index():
     else:
         return redirect(url_for('login'))
 
-# --- Modified Study Tool Routes to Accept Note ID ---
+# --- Study Tool Routes with trial protection ---
 
 @app.route('/flashcards')
 @app.route('/flashcards/<int:note_id>')
@@ -383,7 +369,7 @@ def my_notes():
     notes = Note.query.filter_by(user_id=current_user.id).all()
     return render_template('my_notes.html', notes=notes)
 
-# --- OpenAI API Routes ---
+# --- OpenAI API Routes with trial protection ---
 
 @app.route('/api/flashcards', methods=['POST'])
 @login_required
@@ -526,36 +512,37 @@ def api_tutor_chat():
         if not data:
             return jsonify({"error": "No data provided"}), 400
             
-        user_message = data.get("message", "")
-        if not user_message:
-            return jsonify({"error": "Message required"}), 400
+        user_message = data.get('message', '').strip()
+        conversation = data.get('conversation', [])
+        notes = data.get('notes', '')
         
-        # Simple tutor chat prompt with optional notes context
-        notes = data.get("notes", "")
-        prompt = (
-            f"You are a helpful tutor. Answer the user's question concisely.\n"
-            f"User's question: {user_message}\n"
-            f"Relevant notes: {notes}\n"
+        if not user_message:
+            return jsonify({"error": "Message is empty"}), 400
+
+        # Build the system prompt
+        system_prompt = (
+            "You are a professional, patient, and knowledgeable AI study tutor. "
+            "You help students understand concepts, answer questions, and provide clear explanations. "
         )
+        
+        if notes:
+            system_prompt += f"Notes for context:\n{notes}"
+        
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(conversation)
+        messages.append({"role": "user", "content": user_message})
+
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=0.7,
-            max_tokens=400
+            max_tokens=600,
         )
-        answer = response.choices[0].message.content.strip()
-        return jsonify({"answer": answer})
+        reply = response.choices[0].message.content.strip()
+        return jsonify({"response": reply})
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# --- Error handling ---
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html'), 404
-
-@app.errorhandler(500)
-def internal_error(e):
-    return render_template('500.html'), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
