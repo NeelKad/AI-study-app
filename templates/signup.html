@@ -21,7 +21,7 @@
       </p>
       {% endfor %} {% endif %} {% endwith %}
 
-      <form method="POST" action="{{ url_for('signup') }}">
+      <form method="POST" action="{{ url_for('signup') }}" id="signupForm">
         <input
           type="text"
           name="email"
@@ -48,6 +48,76 @@
           >Login</a
         >
       </p>
+
+      <div style="background: var(--bg-tertiary); 
+                  border: 1px solid var(--border); 
+                  border-radius: 1rem; 
+                  padding: 1.5rem; 
+                  margin-top: 2rem;
+                  font-size: 0.875rem; 
+                  color: var(--text-muted);
+                  text-align: center;">
+        <p style="margin: 0; color: var(--accent); font-weight: 600;">🎯 10-Minute Free Trial</p>
+        <p style="margin: 0.5rem 0 0 0;">
+          Get full access to all AI study features for 10 minutes. Perfect for testing the app!
+        </p>
+      </div>
     </div>
+
+    <script>
+      function getDeviceFingerprint() {
+        try {
+          // Create a canvas fingerprint
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          ctx.textBaseline = 'top';
+          ctx.font = '14px Arial';
+          ctx.fillText('Device fingerprint test', 2, 2);
+          
+          // Collect various browser/device characteristics
+          const fingerprint = [
+            navigator.userAgent,
+            navigator.language,
+            screen.width + 'x' + screen.height,
+            screen.colorDepth,
+            new Date().getTimezoneOffset(),
+            navigator.platform,
+            navigator.cookieEnabled,
+            canvas.toDataURL()
+          ].join('|');
+          
+          // Create a simple hash
+          let hash = 0;
+          for (let i = 0; i < fingerprint.length; i++) {
+            const char = fingerprint.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+          }
+          
+          return Math.abs(hash).toString(36);
+        } catch (e) {
+          // Fallback if fingerprinting fails
+          return 'fallback_' + Math.random().toString(36).substring(2, 15);
+        }
+      }
+
+      // Add device fingerprint to form submission
+      document.getElementById('signupForm').addEventListener('submit', function(e) {
+        const fingerprint = getDeviceFingerprint();
+        
+        // Remove any existing fingerprint input
+        const existingInput = this.querySelector('input[name="device_fingerprint"]');
+        if (existingInput) {
+          existingInput.remove();
+        }
+        
+        // Add new fingerprint input
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'device_fingerprint';
+        hiddenInput.value = fingerprint;
+        this.appendChild(hiddenInput);
+      });
+    </script>
   </body>
 </html>
