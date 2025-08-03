@@ -409,7 +409,7 @@ def api_pastpaper():
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. Include MCQs, True/False, short and application questions."}
+            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. If it is math or science related, provide a variety of easy, medium, and hard problem solving questions. If it is something like Humanities or English, provide 20 MCQs, 10 short answers, and 1 extended response at the end. At the end, provide an answer key."}
         ]
     )
     past_paper = response.choices[0].message.content
@@ -461,5 +461,6 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
