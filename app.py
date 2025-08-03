@@ -70,11 +70,17 @@ class User(UserMixin, db.Model):
 
     def get_id(self):
         return str(self.id)
-    
+
+    from datetime import datetime
+
     def is_trial_expired(self):
-        if self.has_unlimited_access:
-            return False
+        if self.trial_expires_at is None:
+        # If no expiry date, treat as not expired or expired, depending on your logic
+            return False  # or True if you want to restrict access when expiry is missing
         return datetime.utcnow() > self.trial_expires_at
+
+    
+
     
     def get_time_remaining(self):
         if self.has_unlimited_access:
@@ -682,3 +688,4 @@ def api_tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
