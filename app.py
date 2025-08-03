@@ -424,18 +424,32 @@ def api_pastpaper():
 @app.route('/api/tutor_chat', methods=['POST'])
 @login_required
 @trial_required
-def api_tutor_chat():
+@app.route("/api/tutor_chat", methods=["POST"])
+def tutor_chat():
     data = request.json
-    user_message = data.get('message', '').strip()
-    conversation = data.get('conversation', [])
-    notes = data.get('notes', '')
-    system_prompt = "You are a professional AI tutor."
-    if notes:
-        system_prompt += f"\nContext notes:\n{notes}"
-    messages = [{"role": "system", "content": system_prompt}] + conversation + [{"role": "user", "content": user_message}]
-    response = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages, temperature=0.7, max_tokens=600)
-    return jsonify({"response": response.choices[0].message.content.strip()})
+    user_message = data.get("message")
+
+    # ✅ Validate input
+    if not user_message or user_message.strip() == "":
+        return jsonify({"error": "Message cannot be empty."}), 400
+
+    try:
+        # ✅ Make OpenAI request safely
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # Or whichever model you're using
+            messages=[
+                {"role": "system", "content": "You are an AI study tutor. Help students understand topics and answer questions."},
+                {"role": "user", "content": user_message}
+            ]
+        )
+
+        ai_reply = response.choices[0].message.content
+        return jsonify({"reply": ai_reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
