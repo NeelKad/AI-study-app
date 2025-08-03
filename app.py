@@ -457,10 +457,106 @@ def tutor_chat():
     session.modified = True
 
     return jsonify({"reply": reply})
+from moviepy.editor import *
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
+import tempfile
+import random
+
+@app.route("/api/create_reel", methods=["POST"])
+@login_required
+@trial_required
+def create_reel():
+    data = request.get_json()
+    note_text = data.get("notes", "").strip()
+    style = data.get("style", "aesthetic")
+    music = data.get("music", "lofi")
+
+    if not note_text:
+        return jsonify({"error": "No note content provided"}), 400
+
+    # Settings for the reel
+    width, height = 1080, 1920  # Instagram Reel dimensions
+    duration_per_segment = 4    # seconds per segment
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # Update path if needed
+    font_size = 60
+
+    # Split text into segments
+    wrapped_lines = textwrap.wrap(note_text, width=40)
+    segments = []
+    segment_text = []
+    char_count = 0
+    for line in wrapped_lines:
+        char_count += len(line)
+        segment_text.append(line)
+        if char_count > 120:  # Split every ~120 chars
+            segments.append("\n".join(segment_text))
+            segment_text = []
+            char_count = 0
+    if segment_text:
+        segments.append("\n".join(segment_text))
+
+    # Background colors based on style
+    if style == "aesthetic":
+        bg_colors = ["#1e1b4b", "#312e81", "#4338ca"]
+    elif style == "bold":
+        bg_colors = ["#111827", "#1f2937", "#374151"]
+    else:  # study-vibes
+        bg_colors = ["#0f172a", "#334155", "#475569"]
+
+    # Temp files for clips
+    temp_files = []
+    clips = []
+
+    for i, text_block in enumerate(segments):
+        # Create image with gradient background
+        img = Image.new("RGB", (width, height), random.choice(bg_colors))
+        draw = ImageDraw.Draw(img)
+
+        # Load font
+        font = ImageFont.truetype(font_path, font_size)
+
+        # Calculate text position
+        text_w, text_h = draw.multiline_textsize(text_block, font=font)
+        x = (width - text_w) / 2
+        y = (height - text_h) / 2
+
+        # Draw text
+        draw.multiline_text((x, y), text_block, font=font, fill="white", align="center")
+
+        # Save to temp file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        img.save(temp_file.name)
+        temp_files.append(temp_file.name)
+
+        # Create clip
+        clip = ImageClip(temp_file.name).set_duration(duration_per_segment)
+        clips.append(clip)
+
+    # Concatenate image clips
+    video = concatenate_videoclips(clips, method="compose")
+
+    # Add background music
+    music_path = f"static/music/{music}.mp3"
+    if os.path.exists(music_path):
+        audio = AudioFileClip(music_path).volumex(0.3)
+        video = video.set_audio(audio)
+
+    # Export video to temp file
+    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    video.write_videofile(output_path, fps=30, codec="libx264", audio_codec="aac")
+
+    # Clean up temp image files
+    for f in temp_files:
+        os.remove(f)
+
+    # Return video file
+    return send_file(output_path, mimetype="video/mp4", as_attachment=False, download_name="study_reel.mp4")
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
