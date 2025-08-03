@@ -243,6 +243,11 @@ def view_note(note_id):
 @app.route('/')
 def index():
     return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
+@app.route('/save-note', methods=['POST'])
+@login_required
+@trial_required
+def save_note_alias():
+    return add_note()
 
 # --- STUDY TOOLS (UI) ---
 @app.route('/flashcards')
@@ -433,3 +438,4 @@ def api_tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
