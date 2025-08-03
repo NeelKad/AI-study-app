@@ -114,20 +114,60 @@
         gap: 1.5rem;
       }
 
+      .note-card-container {
+        position: relative;
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        overflow: hidden;
+        transition: all 0.2s ease;
+      }
+
+      .note-card-container:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
       .note-card {
         min-height: 200px;
         display: flex;
         flex-direction: column;
         padding: 1.5rem;
-      }
-
-      .note-card:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
+        width: 100%;
+        box-sizing: border-box;
       }
 
       .note-card:hover h3 {
         color: var(--accent);
+      }
+
+      .delete-note-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--text-muted);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        opacity: 0;
+        transform: scale(0.8);
+        z-index: 10;
+      }
+
+      .note-card-container:hover .delete-note-btn {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .delete-note-btn:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--error);
+        border-color: rgba(239, 68, 68, 0.4);
+        transform: scale(1.05);
       }
     </style>
   </head>
@@ -325,22 +365,27 @@
         
         <div class="notes-grid">
           {% for note in notes %}
-          <a href="{{ url_for('view_note', note_id=note.id) }}" class="note-card" style="text-decoration: none; color: inherit; display: block;">
-            <div style="margin-bottom: 1rem;">
-              <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">
-                {{ note.title }}
-              </h3>
-              <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
-              </p>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--bg-border);">
-              <span style="color: var(--text-muted); font-size: 0.75rem;">
-                {{ note.created_at.strftime('%b %d, %Y') if note.created_at else 'Recently' }}
-              </span>
-              <span style="color: var(--text-secondary); font-size: 0.75rem;">→</span>
-            </div>
-          </a>
+          <div class="note-card-container" data-note-id="{{ note.id }}">
+            <a href="{{ url_for('view_note', note_id=note.id) }}" class="note-card" style="text-decoration: none; color: inherit; display: block;">
+              <div style="margin-bottom: 1rem;">
+                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">
+                  {{ note.title }}
+                </h3>
+                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                  {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--bg-border);">
+                <span style="color: var(--text-muted); font-size: 0.75rem;">
+                  {{ note.created_at.strftime('%b %d, %Y') if note.created_at else 'Recently' }}
+                </span>
+                <span style="color: var(--text-secondary); font-size: 0.75rem;">→</span>
+              </div>
+            </a>
+            <button class="delete-note-btn" data-note-id="{{ note.id }}" title="Delete note">
+              🗑️
+            </button>
+          </div>
           {% endfor %}
         </div>
       </div>
@@ -372,70 +417,25 @@
     </main>
 
     <!-- Add Custom Schedule Item Modal -->
-    <div id="addItemModal" style="
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1001;
-      align-items: center;
-      justify-content: center;
-    ">
-      <div style="
-        background: var(--bg-secondary);
-        border: 1px solid var(--bg-border);
-        border-radius: 1rem;
-        padding: 2rem;
-        max-width: 500px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-      ">
-        <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600;">Add Custom Study Item</h3>
+    <div id="addItemModal">
+      <div>
+        <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">Add Custom Study Item</h3>
         
         <form id="addItemForm">
           <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Title</label>
-            <input type="text" id="itemTitle" required style="
-              width: 100%;
-              padding: 0.75rem;
-              border: 1px solid var(--bg-border);
-              border-radius: 0.5rem;
-              background: var(--bg-tertiary);
-              color: var(--text-primary);
-              font-size: 1rem;
-            ">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Title</label>
+            <input type="text" id="itemTitle" required placeholder="Enter study task title">
           </div>
           
           <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Description</label>
-            <textarea id="itemDescription" rows="3" style="
-              width: 100%;
-              padding: 0.75rem;
-              border: 1px solid var(--bg-border);
-              border-radius: 0.5rem;
-              background: var(--bg-tertiary);
-              color: var(--text-primary);
-              font-size: 1rem;
-              resize: vertical;
-            "></textarea>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Description</label>
+            <textarea id="itemDescription" rows="3" placeholder="Describe what you want to study"></textarea>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Study Action</label>
-              <select id="itemAction" style="
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid var(--bg-border);
-                border-radius: 0.5rem;
-                background: var(--bg-tertiary);
-                color: var(--text-primary);
-                font-size: 1rem;
-              ">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Study Action</label>
+              <select id="itemAction">
                 <option value="summarise">Summarise</option>
                 <option value="flashcards">Flashcards</option>
                 <option value="questions">Questions</option>
@@ -445,16 +445,8 @@
             </div>
             
             <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Priority</label>
-              <select id="itemPriority" style="
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid var(--bg-border);
-                border-radius: 0.5rem;
-                background: var(--bg-tertiary);
-                color: var(--text-primary);
-                font-size: 1rem;
-              ">
+              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Priority</label>
+              <select id="itemPriority">
                 <option value="low">Low</option>
                 <option value="medium" selected>Medium</option>
                 <option value="high">High</option>
@@ -462,30 +454,14 @@
             </div>
           </div>
           
-          <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Estimated Time (minutes)</label>
-            <input type="number" id="itemTime" value="15" min="5" max="120" style="
-              width: 100%;
-              padding: 0.75rem;
-              border: 1px solid var(--bg-border);
-              border-radius: 0.5rem;
-              background: var(--bg-tertiary);
-              color: var(--text-primary);
-              font-size: 1rem;
-            ">
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Estimated Time (minutes)</label>
+            <input type="number" id="itemTime" value="15" min="5" max="120">
           </div>
           
           <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Related Note (Optional)</label>
-            <select id="itemNote" style="
-              width: 100%;
-              padding: 0.75rem;
-              border: 1px solid var(--bg-border);
-              border-radius: 0.5rem;
-              background: var(--bg-tertiary);
-              color: var(--text-primary);
-              font-size: 1rem;
-            ">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Related Note (Optional)</label>
+            <select id="itemNote">
               <option value="">No specific note</option>
               {% for note in notes %}
               <option value="{{ note.id }}">{{ note.title }}</option>
@@ -717,6 +693,33 @@
       }
 
       /* Modal styling */
+      #addItemModal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1001;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+
+      #addItemModal > div {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+      }
+
       #addItemModal input,
       #addItemModal textarea,
       #addItemModal select {
@@ -825,6 +828,16 @@
       const cancelAddItem = document.getElementById('cancelAddItem');
       const scheduleContainer = document.getElementById('scheduleContainer');
 
+      // Debug: Check if elements exist
+      console.log('DOM Elements found:', {
+        generateScheduleBtn: !!generateScheduleBtn,
+        addCustomItemBtn: !!addCustomItemBtn,
+        addItemModal: !!addItemModal,
+        addItemForm: !!addItemForm,
+        cancelAddItem: !!cancelAddItem,
+        scheduleContainer: !!scheduleContainer
+      });
+
       // Generate AI Schedule
       async function generateSchedule() {
         const btn = document.getElementById('generateScheduleBtn') || event.target;
@@ -857,64 +870,103 @@
       }
 
       // Event listeners
-      if (generateScheduleBtn) {
-        generateScheduleBtn.addEventListener('click', generateSchedule);
-      }
-
-      if (addCustomItemBtn) {
-        addCustomItemBtn.addEventListener('click', () => {
-          addItemModal.style.display = 'flex';
-        });
-      }
-
-      if (cancelAddItem) {
-        cancelAddItem.addEventListener('click', () => {
-          addItemModal.style.display = 'none';
-          addItemForm.reset();
-        });
-      }
-
-      // Close modal when clicking outside
-      addItemModal.addEventListener('click', (e) => {
-        if (e.target === addItemModal) {
-          addItemModal.style.display = 'none';
-          addItemForm.reset();
+      document.addEventListener('DOMContentLoaded', function() {
+        // Generate schedule button
+        if (generateScheduleBtn) {
+          generateScheduleBtn.addEventListener('click', generateSchedule);
         }
-      });
 
-      // Add custom item form submission
-      addItemForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const formData = {
-          title: document.getElementById('itemTitle').value,
-          description: document.getElementById('itemDescription').value,
-          study_action: document.getElementById('itemAction').value,
-          priority: document.getElementById('itemPriority').value,
-          estimated_time: document.getElementById('itemTime').value,
-          note_id: document.getElementById('itemNote').value || null
-        };
-        
-        try {
-          const response = await fetch('/api/add-schedule-item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+        // Add custom item button
+        if (addCustomItemBtn) {
+          addCustomItemBtn.addEventListener('click', function() {
+            console.log('Add item button clicked'); // Debug
+            addItemModal.style.display = 'flex';
           });
-          
-          const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to add item');
-          }
-          
-          // Close modal and refresh
-          addItemModal.style.display = 'none';
-          addItemForm.reset();
-          location.reload();
-          
-        } catch (error) {
-          alert('Error adding item: ' + error.message);
+        }
+
+        // Cancel button
+        if (cancelAddItem) {
+          cancelAddItem.addEventListener('click', function() {
+            addItemModal.style.display = 'none';
+            addItemForm.reset();
+          });
+        }
+
+        // Close modal when clicking outside
+        if (addItemModal) {
+          addItemModal.addEventListener('click', function(e) {
+            if (e.target === addItemModal) {
+              addItemModal.style.display = 'none';
+              addItemForm.reset();
+            }
+          });
+        }
+
+        // Add custom item form submission
+        if (addItemForm) {
+          addItemForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('Form submitted'); // Debug
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
+            try {
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Adding...';
+              
+              const formData = {
+                title: document.getElementById('itemTitle').value.trim(),
+                description: document.getElementById('itemDescription').value.trim(),
+                study_action: document.getElementById('itemAction').value,
+                priority: document.getElementById('itemPriority').value,
+                estimated_time: parseInt(document.getElementById('itemTime').value),
+                note_id: document.getElementById('itemNote').value || null
+              };
+              
+              console.log('Sending data:', formData); // Debug
+              
+              if (!formData.title) {
+                throw new Error('Title is required');
+              }
+              
+              const response = await fetch('/api/add-schedule-item', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                body: JSON.stringify(formData)
+              });
+              
+              console.log('Response status:', response.status); // Debug
+              
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errorData.error || `Server error: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              console.log('Success:', data); // Debug
+              
+              // Close modal and refresh
+              addItemModal.style.display = 'none';
+              addItemForm.reset();
+              
+              // Show success message
+              alert('Schedule item added successfully!');
+              
+              // Reload page to show new item
+              location.reload();
+              
+            } catch (error) {
+              console.error('Error adding item:', error); // Debug
+              alert('Error adding item: ' + error.message);
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.textContent = originalText;
+            }
+          });
         }
       });
 
@@ -979,6 +1031,69 @@
             } catch (error) {
               console.error('Error deleting item:', error);
               alert('Failed to delete item');
+            }
+          }
+        }
+
+        // Delete note
+        if (e.target.classList.contains('delete-note-btn')) {
+          e.preventDefault(); // Prevent the link from being clicked
+          e.stopPropagation(); // Stop event bubbling
+          
+          const noteId = e.target.dataset.noteId;
+          const noteContainer = e.target.closest('.note-card-container');
+          const noteTitle = noteContainer.querySelector('h3').textContent;
+          
+          if (confirm(`Are you sure you want to delete the note "${noteTitle}"?\n\nThis will also remove any related schedule items.`)) {
+            const originalBtn = e.target;
+            const originalText = originalBtn.textContent;
+            
+            try {
+              originalBtn.disabled = true;
+              originalBtn.textContent = '⏳';
+              originalBtn.style.opacity = '0.5';
+              
+              const response = await fetch(`/delete-note/${noteId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Accept': 'application/json'
+                }
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(errorData.error || `Failed to delete note: ${response.status}`);
+              }
+              
+              // Animate note removal
+              noteContainer.style.transition = 'all 0.3s ease';
+              noteContainer.style.transform = 'scale(0.8)';
+              noteContainer.style.opacity = '0';
+              
+              setTimeout(() => {
+                noteContainer.remove();
+                
+                // Update notes count
+                const remainingNotes = document.querySelectorAll('.note-card-container');
+                const notesCountElement = document.querySelector('.card h3');
+                if (notesCountElement) {
+                  notesCountElement.textContent = remainingNotes.length;
+                }
+                
+                // Show empty state if no notes left
+                if (remainingNotes.length === 0) {
+                  location.reload();
+                }
+              }, 300);
+              
+            } catch (error) {
+              console.error('Error deleting note:', error);
+              alert('Error deleting note: ' + error.message);
+              
+              // Restore button state
+              originalBtn.disabled = false;
+              originalBtn.textContent = originalText;
+              originalBtn.style.opacity = '1';
             }
           }
         }
