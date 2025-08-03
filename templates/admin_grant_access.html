@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Admin - Grant Access</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container" style="max-width: 500px;">
+      <h1>🔑 Admin Panel</h1>
+      <h3 style="margin-bottom: 2rem; color: var(--text-secondary);">Grant Unlimited Access</h3>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div style="margin-bottom: 1.5rem; padding: 1rem 1.5rem; border-radius: 0.75rem; font-weight: 600;
+                        {% if category == 'error' %}
+                          background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
+                          color: #fca5a5;
+                          border: 1px solid rgba(239, 68, 68, 0.4);
+                        {% else %}
+                          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));
+                          color: #6ee7b7;
+                          border: 1px solid rgba(16, 185, 129, 0.4);
+                        {% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" style="margin-bottom: 2rem;">
+        <div style="margin-bottom: 1.5rem;">
+          <label for="admin_key" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">
+            Admin Key:
+          </label>
+          <input
+            type="password"
+            id="admin_key"
+            name="admin_key"
+            placeholder="Enter admin key"
+            required
+            style="margin-bottom: 0;"
+          />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label for="user_email" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">
+            User Email:
+          </label>
+          <input
+            type="email"
+            id="user_email"
+            name="user_email"
+            placeholder="user@example.com"
+            required
+            style="margin-bottom: 0;"
+          />
+        </div>
+
+        <button type="submit" class="button" style="width: 100%;">
+          🚀 Grant Unlimited Access
+        </button>
+      </form>
+
+      <div style="text-align: center;">
+        <a href="{{ url_for('dashboard') }}" class="button button-secondary">
+          ← Back to Dashboard
+        </a>
+      </div>
+
+      <div style="background: var(--bg-tertiary); 
+                  border: 1px solid var(--border); 
+                  border-radius: 1rem; 
+                  padding: 1.5rem; 
+                  margin-top: 2rem;
+                  font-size: 0.875rem; 
+                  color: var(--text-muted);">
+        <h4 style="color: var(--accent); margin-bottom: 1rem; font-size: 1rem;">Instructions:</h4>
+        <ol style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">
+          <li>Enter your admin key (set in environment variables)</li>
+          <li>Enter the email address of the user you want to grant access to</li>
+          <li>Click "Grant Unlimited Access" to remove trial limitations</li>
+        </ol>
+      </div>
+    </div>
+  </body>
+</html>
