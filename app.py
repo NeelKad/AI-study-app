@@ -39,6 +39,10 @@ login_manager = LoginManager()
 login_manager.login_view = "login"
 login_manager.init_app(app)
 
+TRIAL_LENGTH_MINUTES = 10
+ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")  # Set this env var securely
+
+
 # User model with trial system
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -46,7 +50,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     
-    # NEW FIELDS FOR TRIAL SYSTEM
+    # Trial system fields
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     trial_expires_at = db.Column(db.DateTime, nullable=True)
     has_unlimited_access = db.Column(db.Boolean, default=False)
@@ -95,7 +99,7 @@ def load_user(user_id):
 def create_tables():
     db.create_all()
 
-# Decorator to check trial status
+# Decorator to check trial status, redirect to trial expired page if expired
 def trial_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -103,7 +107,6 @@ def trial_required(f):
             return redirect(url_for('login'))
         
         if current_user.is_trial_expired():
-            flash('Your trial has expired! Contact the admin for unlimited access.', 'error')
             return redirect(url_for('trial_expired'))
         
         return f(*args, **kwargs)
@@ -120,7 +123,7 @@ def signup():
             flash('Email already exists.', 'error')
             return render_template('signup.html')
         hashed_pw = generate_password_hash(password)
-        trial_expiry = datetime.utcnow() + timedelta(minutes=20)
+        trial_expiry = datetime.utcnow() + timedelta(minutes=TRIAL_LENGTH_MINUTES)
         new_user = User(email=email, password=hashed_pw, trial_expires_at=trial_expiry)
         db.session.add(new_user)
         db.session.commit()
@@ -137,7 +140,7 @@ def login():
         if user and check_password_hash(user.password, password):
             # Set trial expiration on first login if missing and no unlimited access
             if user.trial_expires_at is None and not user.has_unlimited_access:
-                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=20)
+                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=TRIAL_LENGTH_MINUTES)
                 db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
@@ -150,17 +153,24 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- Trial expired page ---
-@app.route('/trial-expired')
+# --- Trial expired page: allows entering admin key to unlock unlimited access ---
+@app.route('/trial-expired', methods=['GET', 'POST'])
 @login_required
 def trial_expired():
+    if request.method == 'POST':
+        entered_key = request.form.get('admin_key')
+        if entered_key == ADMIN_KEY:
+            current_user.has_unlimited_access = True
+            db.session.commit()
+            flash("Admin key accepted! You now have unlimited access.", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Invalid admin key.", "error")
     return render_template('trial_expired.html', user=current_user)
 
-# --- Admin: grant unlimited access ---
+# --- Admin: grant unlimited access to any user ---
 @app.route('/admin/grant-access', methods=['GET', 'POST'])
 def admin_grant_access():
-    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
-    
     if request.method == 'POST':
         provided_key = request.form.get('admin_key')
         user_email = request.form.get('user_email')
@@ -183,7 +193,6 @@ def admin_grant_access():
 
 @app.route('/admin/users')
 def admin_users():
-    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
     provided_key = request.args.get('key')
     
     if provided_key != ADMIN_KEY:
