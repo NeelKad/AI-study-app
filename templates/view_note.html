@@ -5,51 +5,99 @@
   <title>{{ title }} - AI Study App</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <style>
+    :root {
+      --primary-bg: #f4f6fc;
+      --accent-purple: #6c63ff;
+      --accent-blue: #3b82f6;
+      --accent-hover: #574bff;
+      --text-color: #222;
+      --note-bg: #eef2ff;
+      --note-text: #1e1b4b;
+    }
+
+    body {
+      background: var(--primary-bg);
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 750px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 6px 25px rgba(59,130,246,0.15);
+    }
+
+    #backBtn {
+      text-decoration: none;
+      color: var(--accent-purple);
+      font-weight: bold;
+      display: inline-block;
+      margin-bottom: 20px;
+      font-size: 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      color: #1e1b4b;
+      text-align: center;
+    }
+
     .note-container {
-      white-space: pre-wrap;
-      background: #fff9db;
-      padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 0 35px rgba(234, 174, 0, 0.35);
-      color: #5a3e00;
-      font-weight: 600;
+      background: var(--note-bg);
+      color: var(--note-text);
+      font-weight: 500;
       font-size: 1.1rem;
-      margin-bottom: 30px;
-      max-height: 250px; /* Collapsed height */
+      line-height: 1.6;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: inset 0 0 8px rgba(108,99,255,0.1);
+      margin-bottom: 15px;
+      max-height: 250px; /* Collapsed */
       overflow: hidden;
-      position: relative;
       transition: max-height 0.4s ease;
     }
 
     .note-container.expanded {
-      max-height: 1000px; /* Expand fully */
+      max-height: 1000px; /* Expanded */
     }
 
     .read-more-btn {
       display: block;
-      width: fit-content;
-      margin: 0 auto;
-      background: #fbbf24;
-      color: #5a3e00;
-      padding: 0.5rem 1rem;
+      margin: 10px auto;
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+      color: #fff;
+      padding: 0.6rem 1.4rem;
       font-weight: 600;
       font-size: 1rem;
       border-radius: 0.5rem;
       border: none;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: background 0.3s;
+      transition: opacity 0.3s;
     }
 
     .read-more-btn:hover {
-      background: #f59e0b;
+      opacity: 0.85;
     }
 
     #actionButtons {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 25px;
+    }
+
+    #actionButtons p {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      color: #3b3b98;
     }
 
     .action-btn {
@@ -59,18 +107,21 @@
       border-radius: 0.5rem;
       border: none;
       cursor: pointer;
-      background: var(--accent);
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
       color: white;
-      transition: background 0.3s;
+      transition: transform 0.2s, opacity 0.3s;
+      width: 90%;
+      max-width: 400px;
     }
 
     .action-btn:hover {
-      background: var(--accent-hover);
+      opacity: 0.9;
+      transform: translateY(-2px);
     }
   </style>
 </head>
 <body>
-  <div class="container" style="max-width: 700px;">
+  <div class="container">
     <a href="{{ url_for('dashboard') }}" id="backBtn">&larr; Back to Dashboard</a>
     <h1>{{ title }}</h1>
 
@@ -82,8 +133,8 @@
     <button id="toggleBtn" class="read-more-btn">Read More</button>
     {% endif %}
 
-    <div id="actionButtons" style="margin-top: 20px;">
-      <p style="width: 100%; text-align: center; font-weight: bold;">Choose an action for this note:</p>
+    <div id="actionButtons">
+      <p>Choose an action for this note:</p>
       <button class="action-btn" onclick="navigateTo('flashcards')">Flashcards</button>
       <button class="action-btn" onclick="navigateTo('questions')">Question Generator</button>
       <button class="action-btn" onclick="navigateTo('summarise')">Summarise Notes</button>
