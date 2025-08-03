@@ -83,20 +83,10 @@
       cursor: pointer;
       transition: background 0.3s, transform 0.2s;
       box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
-      text-decoration: none;
-      display: block;
-      text-align: center;
     }
     .action-btn:hover {
       background: linear-gradient(90deg, #4f46e5, #6d28d9);
       transform: translateY(-2px);
-    }
-    .action-btn.reel-btn {
-      background: linear-gradient(90deg, #ec4899, #f59e0b);
-      box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
-    }
-    .action-btn.reel-btn:hover {
-      background: linear-gradient(90deg, #db2777, #f59e0b);
     }
   </style>
 </head>
@@ -120,11 +110,11 @@
 
   <!-- Action Buttons -->
   <div class="actions-container">
-    <button class="action-btn" onclick="navigateTo('flashcards')">📚 Flashcards</button>
-    <button class="action-btn" onclick="navigateTo('questions')">❓ Question Generator</button>
-    <button class="action-btn" onclick="navigateTo('summarise')">📝 Summarise Notes</button>
-    <button class="action-btn" onclick="navigateTo('pastpaper')">📋 Generate Practice Paper</button>
-    <button class="action-btn" onclick="navigateTo('tutor')">🤖 AI Study Tutor</button>
+    <button class="action-btn" onclick="navigateTo('flashcards')">Flashcards</button>
+    <button class="action-btn" onclick="navigateTo('questions')">Question Generator</button>
+    <button class="action-btn" onclick="navigateTo('summarise')">Summarise Notes</button>
+    <button class="action-btn" onclick="navigateTo('pastpaper')">Generate Practice Paper</button>
+    <button class="action-btn" onclick="navigateTo('tutor')">AI Study Tutor</button>
   </div>
 
   <script>
@@ -147,4 +137,3 @@
   </script>
 </body>
 </html>
-
