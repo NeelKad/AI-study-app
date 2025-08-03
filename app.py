@@ -422,33 +422,44 @@ def api_pastpaper():
     return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
 
 
+from flask import session
+
+@app.route("/api/tutor_chat", methods=["POST"])
 @login_required
 @trial_required
-@app.route("/api/tutor_chat", methods=["POST"])
 def tutor_chat():
-    data = request.json
-    user_message = data.get("message")
+    message = request.json.get("message", "").strip()
+    note_content = request.json.get("note_content", "").strip()
 
-    # ✅ Validate input
-    if not user_message or user_message.strip() == "":
-        return jsonify({"error": "Message cannot be empty."}), 400
+    if not message:
+        return jsonify({"error": "Empty message"}), 400
+
+    if "tutor_chat_history" not in session:
+        session["tutor_chat_history"] = [
+            {"role": "system", "content": "You are a helpful AI study tutor. Always explain clearly."},
+            {"role": "system", "content": f"Here are the user's study notes:\n{note_content}"}
+        ]
+
+    session["tutor_chat_history"].append({"role": "user", "content": message})
 
     try:
-        # ✅ Make OpenAI request safely
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Or whichever model you're using
-            messages=[
-                {"role": "system", "content": "You are an AI study tutor. Help students understand topics and answer questions."},
-                {"role": "user", "content": user_message}
-            ]
+            model="gpt-3.5-turbo",
+            messages=session["tutor_chat_history"],
+            temperature=0.7,
+            max_tokens=500
         )
-
-        ai_reply = response.choices[0].message.content
-        return jsonify({"reply": ai_reply})
+        reply = response.choices[0].message.content.strip()
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+    session["tutor_chat_history"].append({"role": "assistant", "content": reply})
+    session.modified = True
+
+    return jsonify({"reply": reply})
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
