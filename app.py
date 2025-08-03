@@ -74,6 +74,24 @@ class Note(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     user = db.relationship('User', backref='notes')
 
+class StudyScheduleItem(db.Model):
+    __tablename__ = 'study_schedule_items'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    study_action = db.Column(db.String(100))  # flashcards, questions, summarise, etc.
+    note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=True)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    estimated_time = db.Column(db.Integer, default=15)  # minutes
+    completed = db.Column(db.Boolean, default=False)
+    is_ai_generated = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    scheduled_for = db.Column(db.DateTime, nullable=True)
+    
+    user = db.relationship('User', backref='schedule_items')
+    note = db.relationship('Note', backref='schedule_items')
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -93,6 +111,199 @@ def trial_required(f):
             return redirect(url_for('trial_expired'))
         return f(*args, **kwargs)
     return decorated_function
+
+# --- AI SCHEDULE GENERATION ---
+def generate_ai_study_schedule(user_notes):
+    """Generate AI-powered study schedule based on user's notes"""
+    if not user_notes:
+        return []
+    
+    # Create a summary of all notes for the AI
+    notes_summary = ""
+    for note in user_notes:
+        notes_summary += f"Title: {note.title}\nContent: {note.content[:200]}...\n\n"
+    
+    try:
+        prompt = f"""
+        Based on the following study notes, create a personalized study schedule. Generate 5-8 study tasks that will help the student learn effectively.
+
+        Notes:
+        {notes_summary}
+
+        For each study task, provide:
+        1. A clear title
+        2. A brief description of what to study
+        3. Recommended study action (flashcards, questions, summarise, tutor, or pastpaper)
+        4. Priority level (high, medium, low)
+        5. Estimated time in minutes (10-60)
+
+        Prioritize recent notes and complex topics. Mix different study methods for variety.
+        
+        Respond with a JSON array where each item has these fields:
+        - title: string
+        - description: string
+        - study_action: string (flashcards/questions/summarise/tutor/pastpaper)
+        - priority: string (high/medium/low)
+        - estimated_time: integer (minutes)
+        - note_title: string (which note this relates to)
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        # Extract JSON from response (in case there's extra text)
+        start_idx = ai_response.find('[')
+        end_idx = ai_response.rfind(']') + 1
+        if start_idx != -1 and end_idx != -1:
+            json_str = ai_response[start_idx:end_idx]
+            schedule_items = json.loads(json_str)
+            return schedule_items
+        else:
+            return []
+    except Exception as e:
+        print(f"Error generating AI schedule: {e}")
+        return []
+
+# --- SCHEDULE API ROUTES ---
+@app.route('/api/generate-schedule', methods=['POST'])
+@login_required
+@trial_required
+def api_generate_schedule():
+    """Generate AI study schedule"""
+    try:
+        # Get user's notes
+        user_notes = Note.query.filter_by(user_id=current_user.id).all()
+        
+        if not user_notes:
+            return jsonify({"error": "No notes found to generate schedule from"}), 400
+        
+        # Generate AI schedule
+        ai_schedule = generate_ai_study_schedule(user_notes)
+        
+        if not ai_schedule:
+            return jsonify({"error": "Failed to generate schedule"}), 500
+        
+        # Clear existing AI-generated items
+        StudyScheduleItem.query.filter_by(user_id=current_user.id, is_ai_generated=True).delete()
+        
+        # Save new schedule items to database
+        saved_items = []
+        for item in ai_schedule:
+            # Find matching note
+            note = None
+            if 'note_title' in item:
+                note = Note.query.filter_by(
+                    user_id=current_user.id, 
+                    title=item['note_title']
+                ).first()
+                if not note:
+                    # Try partial match
+                    note = Note.query.filter(
+                        Note.user_id == current_user.id,
+                        Note.title.like(f"%{item['note_title']}%")
+                    ).first()
+            
+            schedule_item = StudyScheduleItem(
+                user_id=current_user.id,
+                title=item.get('title', 'Study Task'),
+                description=item.get('description', ''),
+                study_action=item.get('study_action', 'summarise'),
+                priority=item.get('priority', 'medium'),
+                estimated_time=item.get('estimated_time', 15),
+                note_id=note.id if note else None,
+                is_ai_generated=True
+            )
+            db.session.add(schedule_item)
+            saved_items.append({
+                'title': schedule_item.title,
+                'description': schedule_item.description,
+                'study_action': schedule_item.study_action,
+                'priority': schedule_item.priority,
+                'estimated_time': schedule_item.estimated_time
+            })
+        
+        db.session.commit()
+        return jsonify({"message": "Schedule generated successfully", "items": saved_items})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/add-schedule-item', methods=['POST'])
+@login_required
+@trial_required
+def api_add_schedule_item():
+    """Add custom schedule item"""
+    data = request.json
+    
+    try:
+        schedule_item = StudyScheduleItem(
+            user_id=current_user.id,
+            title=data.get('title', ''),
+            description=data.get('description', ''),
+            study_action=data.get('study_action', 'summarise'),
+            priority=data.get('priority', 'medium'),
+            estimated_time=int(data.get('estimated_time', 15)),
+            note_id=data.get('note_id') if data.get('note_id') else None,
+            is_ai_generated=False
+        )
+        
+        db.session.add(schedule_item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item added successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/toggle-schedule-item/<int:item_id>', methods=['POST'])
+@login_required
+@trial_required
+def api_toggle_schedule_item(item_id):
+    """Toggle completion status of schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        item.completed = not item.completed
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item updated", "completed": item.completed})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/delete-schedule-item/<int:item_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def api_delete_schedule_item(item_id):
+    """Delete schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        db.session.delete(item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # --- AUTH ROUTES ---
 @app.route('/signup', methods=['GET', 'POST'])
@@ -207,7 +418,12 @@ def api_trial_status():
 @trial_required
 def dashboard():
     notes = Note.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard.html', notes=notes, email=current_user.email, user=current_user)
+    schedule_items = StudyScheduleItem.query.filter_by(user_id=current_user.id).order_by(
+        StudyScheduleItem.completed.asc(),
+        StudyScheduleItem.priority.desc(),
+        StudyScheduleItem.created_at.desc()
+    ).all()
+    return render_template('dashboard.html', notes=notes, schedule_items=schedule_items, email=current_user.email, user=current_user)
 
 @app.route('/enter-notes')
 @login_required
@@ -243,6 +459,7 @@ def view_note(note_id):
 @app.route('/')
 def index():
     return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
+
 @app.route('/save-note', methods=['POST'])
 @login_required
 @trial_required
@@ -461,8 +678,3 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
