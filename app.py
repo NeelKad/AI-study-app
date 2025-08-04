@@ -851,7 +851,7 @@ def flashcards_sr(note_id=None):
         if note:
             note_content = note.content
     
-    return render_template('flashcards_sr.html', 
+    return render_template('flashcards.html', 
                          note_content=note_content, 
                          note_id=note_id,
                          user=current_user)
@@ -1063,3 +1063,4 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
