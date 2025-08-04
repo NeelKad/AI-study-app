@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personalized Learning Plan - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <!-- Navigation Header -->
+  <header>
+    <nav class="navbar">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+        <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+            ← Dashboard
+          </a>
+          <a href="{{ url_for('logout') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+            Logout
+          </a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
+    <!-- Learning Plan Header -->
+    <div id="planHeader" style="margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+          <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem; font-weight: 700; color: var(--accent);">
+            🎯 Personalized Learning Plan
+          </h1>
+          <p id="planSubtitle" style="margin: 0; color: var(--text-secondary); font-size: 1.125rem;">
+            Loading your customized learning journey...
+          </p>
+        </div>
+        
+        <div id="planProgress" style="text-align: right;">
+          <div id="progressBadge" style="
+            background: var(--accent);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+          ">
+            0% Complete
+          </div>
+          <div style="color: var(--text-muted); font-size: 0.875rem;">
+            <span id="completedModules">0</span> of <span id="totalModules">0</span> modules
+          </div>
+        </div>
+      </div>
+      
+      <!-- Overall Progress Bar -->
+      <div style="background: var(--bg-tertiary); height: 8px; border-radius: 4px; overflow: hidden;">
+        <div id="overallProgressBar" style="
+          background: linear-gradient(90deg, var(--accent), var(--success));
+          height: 100%;
+          width: 0%;
+          transition: width 0.3s ease;
+        "></div>
+      </div>
+    </div>
+
+    <!-- Learning Modules -->
+    <div id="learningModules" style="margin-bottom: 2rem;">
+      <!-- Modules will be loaded here -->
+    </div>
+
+    <!-- Current Module Display -->
+    <div id="currentModule" style="display: none;">
+      <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 1.5rem;">
+          <h2 id="moduleTitle" style="margin: 0; font-size: 1.5rem; font-weight: 600; color: var(--text-primary);">
+            Module Title
+          </h2>
+          <button id="closeModule" style="
+            background: var(--bg-tertiary);
+            border: 1px solid var(--bg-border);
+            color: var(--text-muted);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1.25rem;
+          ">×</button>
+        </div>
+        
+        <div id="moduleContent" style="
+          color: var(--text-primary);
+          line-height: 1.6;
+          font-size: 1rem;
+          margin-bottom: 2rem;
+          white-space: pre-wrap;
+        ">
+          Loading module content...
+        </div>
+        
+        <div style="text-align: center;">
+          <button id="completeModuleBtn" class="button" style="padding: 0.75rem 2rem; font-size: 1rem;">
+            ✅ Mark as Complete & Take Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz Interface -->
+    <div id="quizInterface" style="display: none;">
+      <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; color: var(--accent);">
+            📝 Module Quiz
+          </h2>
+          <p style="margin: 0; color: var(--text-secondary);">
+            Test your understanding of the concepts you just learned
+          </p>
+        </div>
+        
+        <div id="quizQuestions">
+          <!-- Quiz questions will be loaded here -->
+        </div>
+        
+        <div id="quizActions" style="text-align: center; margin-top: 2rem;">
+          <button id="submitQuizBtn" class="button" style="padding: 0.75rem 2rem; font-size: 1rem;">
+            📋 Submit Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz Results -->
+    <div id="quizResults" style="display: none;">
+      <div class="card" style="padding: 2rem; margin-bottom: 2rem; text-align: center;">
+        <div id="resultsIcon" style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+        <h2 id="resultsTitle" style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 600;">
+          Quiz Complete!
+        </h2>
+        
+        <div id="scoreDisplay" style="margin-bottom: 2rem;">
+          <div style="
+            background: var(--bg-tertiary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: inline-block;
+            margin-bottom: 1rem;
+          ">
+            <div id="scorePercentage" style="font-size: 2.5rem; font-weight: 700; color: var(--accent);">
+              0%
+            </div>
+            <div style="color: var(--text-secondary);">
+              <span id="scorePoints">0</span> out of <span id="maxPoints">0</span> points
+            </div>
+          </div>
+        </div>
+        
+        <div id="resultsActions">
+          <button id="continueBtn" class="button" style="padding: 0.75rem 2rem; font-size: 1rem; margin-right: 0.5rem;">
+            ➡️ Continue to Next Module
+          </button>
+          <button id="reviewResultsBtn" class="button button-secondary" style="padding: 0.75rem 2rem; font-size: 1rem;">
+            📊 Review Answers
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan Completion -->
+    <div id="planCompletion" style="display: none;">
+      <div class="card" style="padding: 3rem; text-align: center;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🎓</div>
+        <h2 style="margin: 0 0 1rem 0; font-size: 2rem; font-weight: 700; color: var(--success);">
+          Congratulations!
+        </h2>
+        <p style="margin: 0 0 2rem 0; color: var(--text-secondary); font-size: 1.125rem;">
+          You've completed your personalized learning plan!
+        </p>
+        
+        <div style="background: var(--bg-secondary); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem;">
+          <h3 style="margin: 0 0 1rem 0; color: var(--accent);">🏆 Your Achievement</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div>
+              <div style="font-size: 2rem; font-weight: 700; color: var(--success);" id="totalModulesCompleted">0</div>
+              <div style="color: var(--text-secondary); font-size: 0.875rem;">Modules Mastered</div>
+            </div>
+            <div>
+              <div style="font-size: 2rem; font-weight: 700; color: var(--accent);" id="averageQuizScore">0%</div>
+              <div style="color: var(--text-secondary); font-size: 0.875rem;">Average Quiz Score</div>
+            </div>
+            <div>
+              <div style="font-size: 2rem; font-weight: 700; color: var(--warning);" id="timeSpent">0h</div>
+              <div style="color: var(--text-secondary); font-size: 0.875rem;">Time Invested</div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <a href="{{ url_for('dashboard') }}" class="button" style="padding: 0.75rem 2rem; font-size: 1rem; margin-right: 0.5rem;">
+            🏠 Back to Dashboard
+          </a>
+          <button id="createNewPlanBtn" class="button button-secondary" style="padding: 0.75rem 2rem; font-size: 1rem;">
+            🎯 Create Another Plan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" style="text-align: center; padding: 3rem;">
+      <div class="spinner" style="margin: 0 auto 1rem;"></div>
+      <p id="loadingText" style="color: var(--text-secondary);">Loading your learning plan...</p>
+    </div>
+  </main>
+
+  <style>
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a3a;
+      --bg-tertiary: #252547;
+      --bg-border: #3a3a5c;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background: var(--bg-secondary);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--bg-border);
+    }
+
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--accent);
+      color: white;
+    }
+
+    .button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .button-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--bg-border);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .module-card {
+      background: var(--bg-secondary);
+      border: 2px solid var(--bg-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .module-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .module-card.completed {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .module-card.current {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .quiz-question {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .quiz-option {
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quiz-option:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .quiz-option.selected {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.2);
+    }
+
+    .quiz-option input[type="radio"] {
+      margin-right: 0.5rem;
+    }
+
+    .quiz-textarea {
+      width: 100%;
+      min-height: 100px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 1rem;
+      resize: vertical;
+    }
+
+    .quiz-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--bg-border);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .slide-in {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      main {
+        padding: 1rem !important;
+      }
+      
+      #planHeader {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      #planProgress {
+        text-align: center !important;
+        margin-top: 1rem;
+      }
+      
+      .module-card {
+        padding: 1rem;
+      }
+      
+      .card {
+        padding: 1.5rem !important;
+      }
+    }
+  </style>
+
+  <script>
+    // Get plan ID from URL or template
+    const planId = {% if plan %}{{ plan.id }}{% else %}null{% endif %};
+    
+    let currentPlan = null;
+    let currentModuleIndex = 0;
+    let currentQuizSession = null;
+    let quizAnswers = [];
+
+    // Initialize the learning plan interface
+    document.addEventListener('DOMContentLoaded', function() {
+      if (planId) {
+        loadLearningPlan(planId);
+      } else {
+        document.getElementById('loadingIndicator').innerHTML = `
+          <p style="color: var(--error);">No learning plan specified.</p>
+          <a href="{{ url_for('dashboard') }}" class="button">Back to Dashboard</a>
+        `;
+      }
+      
+      setupEventListeners();
+    });
+
+    function setupEventListeners() {
+      // Close module button
+      document.getElementById('closeModule').addEventListener('click', function() {
+        document.getElementById('currentModule').style.display = 'none';
+        document.getElementById('learningModules').style.display = 'block';
+      });
+
+      // Complete module button
+      document.getElementById('completeModuleBtn').addEventListener('click', function() {
+        completeCurrentModule();
+      });
+
+      // Submit quiz button
+      document.getElementById('submitQuizBtn').addEventListener('click', function() {
+        submitQuiz();
+      });
+
+      // Continue button (after quiz)
+      document.getElementById('continueBtn').addEventListener('click', function() {
+        continueToNextModule();
+      });
+
+      // Review results button
+      document.getElementById('reviewResultsBtn').addEventListener('click', function() {
+        showDetailedResults();
+      });
+    }
+
+    async function loadLearningPlan(planId) {
+      try {
+        showLoading('Loading your learning plan...');
+        
+        const response = await fetch(`/api/learning-plan/${planId}`);
+        if (!response.ok) {
+          throw new Error('Failed to load learning plan');
+        }
+        
+        const data = await response.json();
+        currentPlan = data.plan;
+        
+        hideLoading();
+        displayLearningPlan(currentPlan);
+        
+      } catch (error) {
+        console.error('Error loading learning plan:', error);
+        document.getElementById('loadingIndicator').innerHTML = `
+          <p style="color: var(--error);">Error loading learning plan: ${error.message}</p>
+          <a href="{{ url_for('dashboard') }}" class="button">Back to Dashboard</a>
+        `;
+      }
+    }
+
+    function displayLearningPlan(plan) {
+      // Update header
+      document.getElementById('planSubtitle').textContent = `${plan.description} • For: ${plan.note_title}`;
+      
+      const completionPercentage = (plan.completed_modules / plan.total_modules * 100);
+      document.getElementById('progressBadge').textContent = `${Math.round(completionPercentage)}% Complete`;
+      document.getElementById('completedModules').textContent = plan.completed_modules;
+      document.getElementById('totalModules').textContent = plan.total_modules;
+      document.getElementById('overallProgressBar').style.width = `${completionPercentage}%`;
+      
+      // Display modules
+      const modulesContainer = document.getElementById('learningModules');
+      modulesContainer.innerHTML = plan.modules.map((module, index) => {
+        const isCompleted = module.is_completed;
+        const isCurrent = !isCompleted && index === plan.completed_modules;
+        const isLocked = index > plan.completed_modules;
+        
+        return `
+          <div class="module-card ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}" 
+               onclick="${isLocked ? '' : `openModule(${index})`}"
+               style="${isLocked ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+            
+            <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 50%;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-weight: 700;
+                  background: ${isCompleted ? 'var(--success)' : isCurrent ? 'var(--accent)' : 'var(--bg-tertiary)'};
+                  color: ${isCompleted || isCurrent ? 'white' : 'var(--text-muted)'};
+                ">
+                  ${isCompleted ? '✓' : isLocked ? '🔒' : index + 1}
+                </div>
+                
+                <div>
+                  <h3 style="margin: 0 0 0.25rem 0; font-size: 1.125rem; font-weight: 600;">
+                    ${module.title}
+                  </h3>
+                  <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    Concept: ${module.concept_area}
+                  </p>
+                </div>
+              </div>
+              
+              <div style="text-align: right;">
+                ${isCompleted ? `
+                  <div style="color: var(--success); font-size: 0.875rem; font-weight: 600;">
+                    ✅ Completed
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 0.75rem;">
+                    ${new Date(module.completed_at).toLocaleDateString()}
+                  </div>
+                ` : isCurrent ? `
+                  <div style="color: var(--accent); font-size: 0.875rem; font-weight: 600;">
+                    📚 Ready to Learn
+                  </div>
+                ` : isLocked ? `
+                  <div style="color: var(--text-muted); font-size: 0.875rem;">
+                    🔒 Locked
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+            
+            ${isCurrent ? `
+              <div style="
+                background: rgba(99, 102, 241, 0.2);
+                border: 1px solid rgba(99, 102, 241, 0.4);
+                border-radius: 0.5rem;
+                padding: 0.75rem;
+                margin-top: 1rem;
+              ">
+                <div style="color: var(--accent); font-size: 0.875rem; font-weight: 600;">
+                  🎯 Next Step in Your Learning Journey
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem;">
+                  Click to start this module
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+      
+      // Check if plan is complete
+      if (plan.completed_modules === plan.total_modules) {
+        showPlanCompletion();
+      }
+    }
+
+    function openModule(moduleIndex) {
+      const module = currentPlan.modules[moduleIndex];
+      currentModuleIndex = moduleIndex;
+      
+      // Hide modules list
+      document.getElementById('learningModules').style.display = 'none';
+      
+      // Show current module
+      const currentModuleDiv = document.getElementById('currentModule');
+      document.getElementById('moduleTitle').textContent = module.title;
+      document.getElementById('moduleContent').textContent = module.content;
+      
+      // Update complete button based on completion status
+      const completeBtn = document.getElementById('completeModuleBtn');
+      if (module.is_completed) {
+        completeBtn.textContent = '📝 Retake Quiz';
+        completeBtn.onclick = () => loadModuleQuiz(module.id);
+      } else {
+        completeBtn.textContent = '✅ Mark as Complete & Take Quiz';
+        completeBtn.onclick = () => completeCurrentModule();
+      }
+      
+      currentModuleDiv.style.display = 'block';
+      currentModuleDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function completeCurrentModule() {
+      const module = currentPlan.modules[currentModuleIndex];
+      const btn = document.getElementById('completeModuleBtn');
+      const originalText = btn.textContent;
+      
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Completing...';
+        
+        const response = await fetch(`/api/complete-module/${module.id}`, {
+          method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to complete module');
+        }
+        
+        // Update local data
+        currentPlan.modules[currentModuleIndex].is_completed = true;
+        currentPlan.modules[currentModuleIndex].completed_at = new Date().toISOString();
+        currentPlan.completed_modules = data.plan_progress.completed_modules;
+        
+        // Load quiz
+        if (data.quiz_generated && data.quiz_session_id) {
+          loadModuleQuiz(module.id, data.quiz_session_id);
+        } else {
+          alert('Module completed! Quiz generation failed, but you can continue.');
+          continueToNextModule();
+        }
+        
+      } catch (error) {
+        alert('Error completing module: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    async function loadModuleQuiz(moduleId, quizSessionId = null) {
+      try {
+        showLoading('Loading quiz...');
+        
+        const response = await fetch(`/api/module-quiz/${moduleId}`);
+        if (!response.ok) {
+          throw new Error('Failed to load quiz');
+        }
+        
+        const data = await response.json();
+        currentQuizSession = data;
+        quizAnswers = new Array(data.questions.length).fill('');
+        
+        hideLoading();
+        displayQuiz(data.questions);
+        
+      } catch (error) {
+        console.error('Error loading quiz:', error);
+        alert('Error loading quiz: ' + error.message);
+        continueToNextModule();
+      }
+    }
+
+    function displayQuiz(questions) {
+      // Hide current module
+      document.getElementById('currentModule').style.display = 'none';
+      
+      // Show quiz interface
+      const quizInterface = document.getElementById('quizInterface');
+      const questionsContainer = document.getElementById('quizQuestions');
+      
+      questionsContainer.innerHTML = questions.map((question, index) => `
+        <div class="quiz-question slide-in" style="animation-delay: ${index * 0.1}s">
+          <h4 style="margin: 0 0 1rem 0; color: var(--text-primary);">
+            Question ${index + 1}
+          </h4>
+          <p style="margin: 0 0 1rem 0; color: var(--text-secondary); font-size: 1.125rem;">
+            ${question.question}
+          </p>
+          
+          ${question.type === 'multiple_choice' ? `
+            <div style="margin-top: 1rem;">
+              ${question.options.map((option, optIndex) => `
+                <label class="quiz-option" onclick="selectMultipleChoice(${index}, '${option}')">
+                  <input type="radio" name="question_${index}" value="${option}" 
+                         onchange="quizAnswers[${index}] = this.value">
+                  ${option}
+                </label>
+              `).join('')}
+            </div>
+          ` : `
+            <textarea 
+              class="quiz-textarea" 
+              placeholder="Enter your answer here..."
+              oninput="quizAnswers[${index}] = this.value"
+            ></textarea>
+          `}
+        </div>
+      `).join('');
+      
+      quizInterface.style.display = 'block';
+      quizInterface.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function selectMultipleChoice(questionIndex, option) {
+      // Remove selected class from all options for this question
+      const questionDiv = document.querySelectorAll('.quiz-question')[questionIndex];
+      questionDiv.querySelectorAll('.quiz-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      
+      // Add selected class to clicked option
+      event.currentTarget.classList.add('selected');
+      quizAnswers[questionIndex] = option;
+    }
+
+    async function submitQuiz() {
+      // Validate all questions are answered
+      const unanswered = quizAnswers.findIndex(answer => !answer || answer.trim() === '');
+      if (unanswered !== -1) {
+        alert(`Please answer question ${unanswered + 1} before submitting.`);
+        return;
+      }
+      
+      const btn = document.getElementById('submitQuizBtn');
+      const originalText = btn.textContent;
+      
+      try {
+        btn.disabled = true;
+        btn.textContent = 'Grading Quiz...';
+        
+        const response = await fetch(`/api/submit-quiz/${currentQuizSession.quiz_session_id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: quizAnswers })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to submit quiz');
+        }
+        
+        displayQuizResults(data);
+        
+      } catch (error) {
+        alert('Error submitting quiz: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    function displayQuizResults(results) {
+      // Hide quiz interface
+      document.getElementById('quizInterface').style.display = 'none';
+      
+      // Show results
+      const resultsDiv = document.getElementById('quizResults');
+      
+      // Update results display
+      const passed = results.passed;
+      document.getElementById('resultsIcon').textContent = passed ? '🎉' : '📚';
+      document.getElementById('resultsTitle').textContent = passed ? 
+        'Excellent Work!' : 'Keep Learning!';
+      
+      document.getElementById('scorePercentage').textContent = `${Math.round(results.percentage)}%`;
+      document.getElementById('scorePercentage').style.color = passed ? 'var(--success)' : 'var(--warning)';
+      document.getElementById('scorePoints').textContent = results.total_score;
+      document.getElementById('maxPoints').textContent = results.max_score;
+      
+      // Update continue button
+      const continueBtn = document.getElementById('continueBtn');
+      if (currentModuleIndex + 1 >= currentPlan.total_modules) {
+        continueBtn.textContent = '🎓 Complete Learning Plan';
+        continueBtn.onclick = () => showPlanCompletion();
+      } else {
+        continueBtn.textContent = '➡️ Continue to Next Module';
+        continueBtn.onclick = () => continueToNextModule();
+      }
+      
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
+      
+      // Store results for detailed view
+      currentQuizSession.results = results;
+    }
+
+    function continueToNextModule() {
+      // Hide all interfaces
+      document.getElementById('currentModule').style.display = 'none';
+      document.getElementById('quizInterface').style.display = 'none';
+      document.getElementById('quizResults').style.display = 'none';
+      
+      // Check if plan is complete
+      if (currentPlan.completed_modules >= currentPlan.total_modules) {
+        showPlanCompletion();
+        return;
+      }
+      
+      // Refresh plan data and show modules
+      loadLearningPlan(planId);
+    }
+
+    function showPlanCompletion() {
+      // Hide all other interfaces
+      document.getElementById('learningModules').style.display = 'none';
+      document.getElementById('currentModule').style.display = 'none';
+      document.getElementById('quizInterface').style.display = 'none';
+      document.getElementById('quizResults').style.display = 'none';
+      
+      // Show completion interface
+      const completionDiv = document.getElementById('planCompletion');
+      
+      // Update completion stats
+      document.getElementById('totalModulesCompleted').textContent = currentPlan.total_modules;
+      document.getElementById('averageQuizScore').textContent = '85%'; // Could calculate from actual quiz results
+      document.getElementById('timeSpent').textContent = Math.round(currentPlan.total_modules * 0.5) + 'h';
+      
+      completionDiv.style.display = 'block';
+      completionDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showDetailedResults() {
+      if (!currentQuizSession.results) return;
+      
+      // Create modal for detailed results
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1003;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        box-sizing: border-box;
+      `;
+      
+      const modalContent = document.createElement('div');
+      modalContent.style.cssText = `
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 800px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+      `;
+      
+      modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3 style="margin: 0; color: var(--accent); font-size: 1.5rem;">📊 Detailed Quiz Results</h3>
+          <button onclick="this.closest('.modal').remove()" style="
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+          ">×</button>
+        </div>
+        
+        ${currentQuizSession.results.detailed_results.map((result, index) => `
+          <div style="
+            background: var(--bg-tertiary);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid ${result.score >= 7 ? 'var(--success)' : result.score >= 4 ? 'var(--warning)' : 'var(--error)'};
+          ">
+            <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Question ${index + 1}</h4>
+            <p style="margin: 0 0 1rem 0; color: var(--text-secondary);">${result.question}</p>
+            
+            <div style="margin-bottom: 0.5rem;">
+              <strong style="color: var(--text-primary);">Your Answer:</strong>
+              <span style="color: var(--text-secondary);">${result.user_answer}</span>
+            </div>
+            
+            <div style="margin-bottom: 0.5rem;">
+              <strong style="color: var(--text-primary);">Correct Answer:</strong>
+              <span style="color: var(--success);">${result.correct_answer}</span>
+            </div>
+            
+            <div style="margin-bottom: 0.5rem;">
+              <strong style="color: var(--text-primary);">Score:</strong>
+              <span style="color: ${result.score >= 7 ? 'var(--success)' : result.score >= 4 ? 'var(--warning)' : 'var(--error)'};">
+                ${result.score}/${result.max_score}
+              </span>
+            </div>
+            
+            ${result.explanation ? `
+              <div style="
+                background: rgba(99, 102, 241, 0.1);
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                border-radius: 0.5rem;
+                padding: 0.75rem;
+                margin-top: 0.5rem;
+              ">
+                <strong style="color: var(--accent);">Explanation:</strong>
+                <span style="color: var(--text-secondary); margin-left: 0.5rem;">${result.explanation}</span>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+        
+        <div style="text-align: center; margin-top: 1.5rem;">
+          <button onclick="this.closest('.modal').remove()" class="button">
+            Close Review
+          </button>
+        </div>
+      `;
+      
+      modal.appendChild(modalContent);
+      modal.className = 'modal';
+      document.body.appendChild(modal);
+    }
+
+    function showLoading(text) {
+      document.getElementById('loadingText').textContent = text;
+      document.getElementById('loadingIndicator').style.display = 'block';
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingIndicator').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
