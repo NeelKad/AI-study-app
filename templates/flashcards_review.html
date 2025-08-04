@@ -64,12 +64,15 @@
   <div class="grid">
     {% for card in flashcards %}
       <div class="card">
-        <strong>{{ card.term }}</strong>
+        <a href="{{ url_for('flashcard_detail', card_id=card.id) }}">
+          <strong>{{ card.term }}</strong>
+        </a>
         <p>{{ card.definition }}</p>
         <p style="font-size:0.8rem;">Box: {{ card.box }}</p>
       </div>
     {% endfor %}
   </div>
 </main>
+
 </body>
 </html>
