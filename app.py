@@ -68,9 +68,12 @@ class User(UserMixin, db.Model):
 
 from flask import send_from_directory
 
+from flask import render_template
+
 @app.route('/')
-def serve_index():
-    return send_from_directory('templates', 'login.html')
+def home():
+    return render_template('login.html')
+
 
 
 class Note(db.Model):
@@ -1831,6 +1834,7 @@ def learning_plan_ui(plan_id=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
