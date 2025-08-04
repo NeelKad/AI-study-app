@@ -188,12 +188,12 @@ class SpacedRepetitionEngine:
         ).order_by(
             # Prioritize overdue cards, then by state priority
             Flashcard.next_review.asc(),
-            db.case([
+            db.case(
                 (Flashcard.state == 'new', 1),
                 (Flashcard.state == 'learning', 2),
                 (Flashcard.state == 'relearning', 3),
                 (Flashcard.state == 'review', 4)
-            ])
+            )
         ).limit(limit).all()
         
         return cards
@@ -1063,4 +1063,5 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
