@@ -629,7 +629,7 @@ def api_grade_question():
 @trial_required
 def api_summarise():
     notes = request.json.get('notes', '')
-    prompt = f"Summarize these notes into a concise set of dotpoints, with emojis as graphics:\n\n{notes}"
+    prompt = f"Summarize these notes into a concise set of dotpoints, with emojis as graphics. Seperate each dot-point with 1 line. Make the overall set of study notes look good with emojis:\n\n{notes}"
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
@@ -700,3 +700,4 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
