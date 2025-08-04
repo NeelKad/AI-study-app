@@ -489,17 +489,6 @@ def save_note_alias():
     return add_note()
 
 # --- STUDY TOOLS (UI) ---
-@app.route('/flashcards')
-@app.route('/flashcards/<int:note_id>')
-@login_required
-@trial_required
-def flashcards(note_id=None):
-    note_content = None
-    if note_id:
-        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
-        if note:
-            note_content = note.content
-    return render_template('flashcards.html', note_content=note_content, user=current_user)
 
 @app.route('/questions')
 @app.route('/questions/<int:note_id>')
@@ -557,26 +546,42 @@ def my_notes():
     return render_template('my_notes.html', notes=notes)
 
 # --- OPENAI API ROUTES ---
+@app.route('/flashcards/<int:note_id>')
+@login_required
+def flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('flashcards.html', note_id=note.id, note_title=note.title, note_content=note.content)
+
 @app.route('/api/flashcards', methods=['POST'])
 @login_required
-@trial_required
 def api_flashcards():
-    notes = request.json.get('notes', '')
+    note_id = request.json.get('note_id')
+    if not note_id:
+        return jsonify({})
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({})
+    
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."},
-                {"role": "user", "content": notes}
+                {"role": "user", "content": note.content}
             ],
             temperature=0.7,
             max_tokens=700
         )
         text = response.choices[0].message.content.strip()
         flashcards = json.loads(text) if text else {}
-    except Exception:
+    except Exception as e:
+        print("Error generating flashcards:", e)
         flashcards = {}
     return jsonify(flashcards)
+
 
 @app.route('/api/questions', methods=['POST'])
 @login_required
@@ -700,3 +705,4 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
