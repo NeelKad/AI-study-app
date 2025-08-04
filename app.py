@@ -70,7 +70,7 @@ from flask import send_from_directory
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('templates', 'dashboard.html')
+    return send_from_directory('templates', 'login.html')
 
 
 class Note(db.Model):
@@ -1831,6 +1831,7 @@ def learning_plan_ui(plan_id=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
