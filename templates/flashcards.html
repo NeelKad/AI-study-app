@@ -954,90 +954,51 @@
       }
 
       // Setup event listeners
-      function setupEventListeners() {
-        // Session type selection
-        document.querySelectorAll('.option-card').forEach(card => {
-          card.addEventListener('click', () => {
-            document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-            currentSession.sessionType = card.dataset.type;
-          });
+     function setupEventListeners() {
+      const optionCards = document.querySelectorAll('.option-card');
+      const qualityButtons = document.querySelectorAll('.quality-btn');
+
+  // Session type selection + start session on single click
+      optionCards.forEach(card => {
+        card.addEventListener('click', () => {
+      // Deselect all cards
+          optionCards.forEach(c => c.classList.remove('selected'));
+      // Select clicked card
+          card.classList.add('selected');
+      // Update session type and start session
+          currentSession.sessionType = card.dataset.type;
+          startStudySession();
         });
+      });
 
-        // Generate new flashcards
-        document.getElementById('generateBtn').addEventListener('click', generateFlashcards);
+  // Generate new flashcards button
+      document.getElementById('generateBtn').addEventListener('click', generateFlashcards);
 
-        // Start study session
-        document.querySelectorAll('.option-card').forEach(card => {
-          card.addEventListener('dblclick', startStudySession);
+  // Flashcard flip
+      flashcard.addEventListener('click', flipCard);
+
+  // Quality buttons (review scoring)
+      qualityButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const quality = parseInt(btn.dataset.quality, 10);
+          reviewCard(quality);
         });
+      });
 
-        // Flashcard click to flip
-        flashcard.addEventListener('click', flipCard);
+  // Session complete buttons
+      document.getElementById('continueStudying').addEventListener('click', () => {
+        sessionComplete.style.display = 'none';
+        startScreen.style.display = 'block';
+        studySession.style.display = 'none';
+        loadStats();
+      });
 
-        // Quality buttons
-        document.querySelectorAll('.quality-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const quality = parseInt(btn.dataset.quality);
-            reviewCard(quality);
-          });
-        });
+      document.getElementById('viewStats').addEventListener('click', showStats);
+      document.getElementById('closeStats').addEventListener('click', hideStats);
 
-        // Session complete actions
-        document.getElementById('continueStudying').addEventListener('click', () => {
-          sessionComplete.style.display = 'none';
-          startScreen.style.display = 'block';
-          studySession.style.display = 'none';
-          loadStats();
-        });
-
-        document.getElementById('viewStats').addEventListener('click', showStats);
-        document.getElementById('closeStats').addEventListener('click', hideStats);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', handleKeyboard);
-      }
-
-      // Generate new flashcards from notes
-      async function generateFlashcards() {
-        if (!noteContent) {
-          alert('No note content available. Please select a note first.');
-          return;
-        }
-
-        const btn = document.getElementById('generateBtn');
-        const originalText = btn.innerHTML;
-
-        try {
-          btn.disabled = true;
-          btn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; margin-right: 0.5rem;"></div>Generating...';
-
-          const response = await fetch('/api/flashcards-enhanced', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              notes: noteContent,
-              note_id: noteId
-            })
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to generate flashcards');
-          }
-
-          alert(`Successfully generated ${data.count} flashcards!`);
-          await loadStats();
-
-        } catch (error) {
-          alert('Error generating flashcards: ' + error.message);
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = originalText;
-        }
-      }
-
+  // Keyboard shortcuts
+      document.addEventListener('keydown', handleKeyboard);
+    }
       // Start study session
       async function startStudySession() {
         const sessionType = currentSession.sessionType;
@@ -1331,3 +1292,4 @@
     </script>
   </body>
 </html>
+
