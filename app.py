@@ -487,7 +487,9 @@ def review_card():
     ).first()
     
     if not card:
-        return jsonify({'error': 'Card not found'}), 404
+        return jsonify({'error':
+                        
+                        'Card not found'}), 404
     
     try:
         # Record the review
