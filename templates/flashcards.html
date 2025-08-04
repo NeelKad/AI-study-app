@@ -1,395 +1,336 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flashcards - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
-  <body>
-    <!-- Navigation Header -->
-    <header>
-      <nav class="navbar">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
-          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-          <div style="display: flex; gap: 1rem; align-items: center;">
-            <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
-              ← Dashboard
-            </a>
-          </div>
-        </div>
-      </nav>
-    </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a3a;
+      --bg-tertiary: #252547;
+      --bg-border: #3a3a5c;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --success: #10b981;
+      --error: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-    <!-- Main Content -->
-    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
-      <!-- Header Section -->
-      <div style="margin-bottom: 3rem; text-align: center;">
-        <h1 style="margin-bottom: 0.5rem; color: var(--accent);">Flashcards</h1>
-        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
-          Click on cards to flip between terms and definitions
-        </p>
-      </div>
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+    }
 
-      <!-- Loading Indicator -->
-      <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
-        <div style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: var(--bg-secondary); border-radius: 0.75rem; border: 1px solid var(--bg-border);">
-          <div class="spinner"></div>
-          <span style="color: var(--text-secondary); font-weight: 500;">Loading flashcards...</span>
-        </div>
-      </div>
+    .navbar {
+      background: var(--bg-secondary);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--bg-border);
+    }
 
-      <!-- Flashcard Container -->
-      <div style="margin-bottom: 2rem;">
-        <div id="flashcard" class="card" style="
-          cursor: pointer;
-          padding: 3rem 2rem;
-          min-height: 250px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          font-size: 1.25rem;
-          line-height: 1.5;
-          transition: all 0.2s ease;
-          user-select: none;
-          border: 2px solid transparent;
-        ">
-          Loading...
-        </div>
-      </div>
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
 
-      <!-- Navigation Controls -->
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
-        <button id="prevBtn" class="button button-secondary" disabled>
-          ← Previous
-        </button>
-        <button id="nextBtn" class="button button-secondary" disabled>
-          Next →
-        </button>
-      </div>
+    .nav-logo:hover {
+      color: var(--text-primary);
+    }
 
-      <!-- Card Counter -->
-      <div id="cardCounter" style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;">
-        <!-- Will be populated by JavaScript -->
-      </div>
-    </main>
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--accent);
+      color: white;
+    }
 
-    <style>
-      /* Color scheme matching dashboard */
-      :root {
-        --bg-primary: #0f0f23;
-        --bg-secondary: #1a1a3a;
-        --bg-tertiary: #252547;
-        --bg-border: #3a3a5c;
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --accent: #6366f1;
-        --success: #10b981;
-        --error: #ef4444;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    .button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .button-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--bg-border);
+    }
+
+    .button-secondary:hover {
+      background: var(--bg-border);
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    #flashcard:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    #flashcard.flipped {
+      background: var(--bg-tertiary);
+      border-color: var(--success);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--bg-border);
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      border-color: var(--bg-border);
+    }
+
+    .button:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    #cardCounter {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      main { padding: 1rem; }
+      #flashcard {
+        padding: 2rem 1.5rem;
+        min-height: 200px;
+        font-size: 1.125rem;
       }
-
-      body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        margin: 0;
-        min-height: 100vh;
-      }
-
-      /* Navigation */
-      .navbar {
-        background: var(--bg-secondary);
-        padding: 1rem 2rem;
-        border-bottom: 1px solid var(--bg-border);
-      }
-
-      .nav-logo {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--accent);
-        text-decoration: none;
-      }
-
-      .nav-logo:hover {
-        color: var(--text-primary);
-      }
-
-      /* Buttons */
       .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
-        font-weight: 600;
-        text-decoration: none;
-        border-radius: 0.5rem;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: var(--accent);
-        color: white;
       }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <nav class="navbar">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;">
+      <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+      <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding:0.5rem 1rem;font-size:0.8125rem;">← Dashboard</a>
+    </div>
+  </nav>
+</header>
 
-      .button:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-      }
+<main style="padding:2rem;max-width:1000px;margin:0 auto;">
+  <div style="margin-bottom:2rem;text-align:center;">
+    <h1 style="margin-bottom:0.5rem;color:var(--accent);">{{ note_title }} - Flashcards</h1>
+    <p style="color:var(--text-secondary);font-size:1rem;">Click to flip card. Grade difficulty below.</p>
+  </div>
 
-      .button-secondary {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-        border-color: var(--bg-border);
-      }
+  <div id="loadingIndicator" style="display:none;text-align:center;margin:2rem 0;">
+    <div style="display:inline-flex;align-items:center;gap:0.75rem;padding:1rem 1.5rem;background:var(--bg-secondary);border-radius:0.75rem;border:1px solid var(--bg-border);">
+      <div class="spinner"></div>
+      <span style="color:var(--text-secondary);font-weight:500;">Loading flashcards...</span>
+    </div>
+  </div>
 
-      .button-secondary:hover {
-        background: var(--bg-border);
-      }
+  <div style="margin-bottom:2rem;">
+    <div id="flashcard" class="card" style="
+      cursor:pointer;padding:3rem 2rem;min-height:250px;
+      display:flex;align-items:center;justify-content:center;text-align:center;
+      font-size:1.25rem;line-height:1.5;transition:all 0.2s ease;user-select:none;
+      border:2px solid transparent;">
+      Loading...
+    </div>
+  </div>
 
-      /* Cards */
-      .card {
-        background: var(--bg-secondary);
-        border: 1px solid var(--bg-border);
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s ease;
-      }
+  <div style="display:flex;justify-content:center;gap:1rem;margin-bottom:1rem;">
+    <button id="prevBtn" class="button button-secondary" disabled>← Previous</button>
+    <button id="nextBtn" class="button button-secondary" disabled>Next →</button>
+  </div>
 
-      .card:hover {
-        box-shadow: var(--shadow-md);
-      }
+  <div style="display:flex;justify-content:center;gap:0.75rem;margin-bottom:2rem;">
+    <button id="againBtn" class="button button-secondary">Again</button>
+    <button id="hardBtn" class="button button-secondary">Hard</button>
+    <button id="goodBtn" class="button">Good</button>
+    <button id="easyBtn" class="button" style="background:#10b981;">Easy</button>
+  </div>
 
-      .spinner {
-        width: 20px;
-        height: 20px;
-        border: 2px solid var(--bg-border);
-        border-top: 2px solid var(--accent);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
+  <div id="cardCounter" style="text-align:center;"></div>
+</main>
 
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
+<script>
+const noteId = {{ note_id }};
+const flashcardDiv = document.getElementById("flashcard");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const loadingIndicator = document.getElementById("loadingIndicator");
+const cardCounter = document.getElementById("cardCounter");
 
-      #flashcard:hover {
-        border-color: var(--accent);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-      }
+const againBtn = document.getElementById("againBtn");
+const hardBtn = document.getElementById("hardBtn");
+const goodBtn = document.getElementById("goodBtn");
+const easyBtn = document.getElementById("easyBtn");
 
-      #flashcard.flipped {
-        background: var(--bg-tertiary);
-        border-color: var(--success);
-      }
+let flashcards = [];
+let currentIndex = 0;
+let showingDefinition = false;
 
-      .button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: var(--bg-tertiary);
-        color: var(--text-muted);
-        border-color: var(--bg-border);
-      }
+const intervals = [60000, 600000, 3600000, 86400000, 259200000]; // 1m,10m,1h,1d,3d
 
-      .button:disabled:hover {
-        transform: none;
-        box-shadow: none;
-      }
+function showLoading() { loadingIndicator.style.display = "block"; }
+function hideLoading() { loadingIndicator.style.display = "none"; }
 
-      /* Card Counter */
-      #cardCounter {
-        color: var(--accent);
-        font-weight: 600;
-      }
+function updateCardCounter() {
+  if (flashcards.length > 0) {
+    cardCounter.textContent = `Card ${currentIndex + 1} of ${flashcards.length}`;
+  } else {
+    cardCounter.textContent = "";
+  }
+}
 
-      /* Responsive adjustments */
-      @media (max-width: 768px) {
-        .navbar {
-          padding: 1rem;
-        }
-        
-        main {
-          padding: 1rem;
-        }
-        
-        #flashcard {
-          padding: 2rem 1.5rem;
-          min-height: 200px;
-          font-size: 1.125rem;
-        }
-        
-        .button {
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
-        }
-      }
-    </style>
+function updateFlashcard() {
+  if (flashcards.length === 0) {
+    flashcardDiv.textContent = "No flashcards found.";
+    return;
+  }
+  const card = flashcards[currentIndex];
+  flashcardDiv.textContent = showingDefinition ? card.definition : card.term;
+  flashcardDiv.classList.toggle("flipped", showingDefinition);
+  prevBtn.disabled = currentIndex === 0;
+  nextBtn.disabled = currentIndex === flashcards.length - 1;
+  updateCardCounter();
+}
 
-    <script>
-      const flashcardDiv = document.getElementById("flashcard");
-      const prevBtn = document.getElementById("prevBtn");
-      const nextBtn = document.getElementById("nextBtn");
-      const loadingIndicator = document.getElementById("loadingIndicator");
-      const cardCounter = document.getElementById("cardCounter");
+function getDueCards() {
+  const now = Date.now();
+  return flashcards.filter(c => c.nextReview <= now && c.box < 6);
+}
 
-      // Get note content from template or sessionStorage
-      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
-      
-      if (!noteContent) {
-        noteContent = sessionStorage.getItem("processedNotes");
-      }
+function goToNextCard() {
+  const due = getDueCards();
+  if (due.length === 0) {
+    flashcardDiv.textContent = "🎉 All cards reviewed for now!";
+    return;
+  }
+  currentIndex = flashcards.indexOf(due[0]);
+  showingDefinition = false;
+  updateFlashcard();
+}
 
-      let flashcards = [];
-      let currentIndex = 0;
-      let showingDefinition = false;
+function applyGrade(card, action) {
+  switch(action) {
+    case "again":
+      card.box = 1;
+      card.nextReview = Date.now() + intervals[0];
+      break;
+    case "hard":
+      card.nextReview = Date.now() + intervals[Math.max(card.box-1,0)];
+      break;
+    case "good":
+      if (card.box < 5) card.box++;
+      card.nextReview = Date.now() + intervals[card.box-1];
+      break;
+    case "easy":
+      card.box = Math.min(card.box+2, 5);
+      card.nextReview = Date.now() + intervals[card.box-1];
+      break;
+  }
+  saveProgress();
+  goToNextCard();
+}
 
-      function showLoading() {
-        loadingIndicator.style.display = "block";
-      }
-      
-      function hideLoading() {
-        loadingIndicator.style.display = "none";
-      }
+againBtn.onclick = () => applyGrade(flashcards[currentIndex], "again");
+hardBtn.onclick = () => applyGrade(flashcards[currentIndex], "hard");
+goodBtn.onclick = () => applyGrade(flashcards[currentIndex], "good");
+easyBtn.onclick = () => applyGrade(flashcards[currentIndex], "easy");
 
-      function updateCardCounter() {
-        if (flashcards.length > 0) {
-          cardCounter.textContent = `Card ${currentIndex + 1} of ${flashcards.length}`;
-        } else {
-          cardCounter.textContent = "";
-        }
-      }
+function saveProgress() {
+  sessionStorage.setItem(`flashcards_${noteId}`, JSON.stringify(flashcards));
+}
 
-      function updateFlashcard() {
-        if (flashcards.length === 0) {
-          flashcardDiv.textContent = "No flashcards found.";
-          flashcardDiv.classList.remove("flipped");
-          prevBtn.disabled = true;
-          nextBtn.disabled = true;
-          updateCardCounter();
-          return;
-        }
+function loadProgress() {
+  const saved = sessionStorage.getItem(`flashcards_${noteId}`);
+  if (saved) {
+    flashcards = JSON.parse(saved);
+    return true;
+  }
+  return false;
+}
 
-        const card = flashcards[currentIndex];
-        
-        if (showingDefinition) {
-          flashcardDiv.textContent = typeof card.definition === "string"
-            ? card.definition
-            : JSON.stringify(card.definition, null, 2);
-          flashcardDiv.classList.add("flipped");
-        } else {
-          flashcardDiv.textContent = typeof card.term === "string"
-            ? card.term
-            : JSON.stringify(card.term);
-          flashcardDiv.classList.remove("flipped");
-        }
+flashcardDiv.addEventListener("click", () => {
+  if (flashcards.length > 0) {
+    showingDefinition = !showingDefinition;
+    updateFlashcard();
+  }
+});
 
-        prevBtn.disabled = currentIndex === 0;
-        nextBtn.disabled = currentIndex === flashcards.length - 1;
-        updateCardCounter();
-      }
+prevBtn.onclick = () => { if (currentIndex > 0) { currentIndex--; showingDefinition = false; updateFlashcard(); } };
+nextBtn.onclick = () => { if (currentIndex < flashcards.length - 1) { currentIndex++; showingDefinition = false; updateFlashcard(); } };
 
-      flashcardDiv.addEventListener("click", () => {
-        if (flashcards.length > 0) {
-          showingDefinition = !showingDefinition;
-          updateFlashcard();
-        }
-      });
+async function loadFlashcards() {
+  showLoading();
+  flashcardDiv.textContent = "Loading flashcards...";
+  try {
+    const res = await fetch("/api/flashcards", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ note_id: noteId })
+    });
+    const data = await res.json();
+    hideLoading();
+    flashcards = Object.entries(data).map(([term, definition]) => ({
+      term, definition, box: 1, nextReview: Date.now()
+    }));
+    if (loadProgress()) {
+      goToNextCard();
+    } else {
+      saveProgress();
+      goToNextCard();
+    }
+  } catch (err) {
+    hideLoading();
+    flashcardDiv.textContent = `Error: ${err.message}`;
+  }
+}
 
-      prevBtn.addEventListener("click", () => {
-        if (currentIndex > 0) {
-          currentIndex--;
-          showingDefinition = false;
-          updateFlashcard();
-        }
-      });
-
-      nextBtn.addEventListener("click", () => {
-        if (currentIndex < flashcards.length - 1) {
-          currentIndex++;
-          showingDefinition = false;
-          updateFlashcard();
-        }
-      });
-
-      // Keyboard navigation
-      document.addEventListener("keydown", (e) => {
-        if (flashcards.length === 0) return;
-        
-        switch(e.key) {
-          case "ArrowLeft":
-            if (currentIndex > 0) {
-              currentIndex--;
-              showingDefinition = false;
-              updateFlashcard();
-            }
-            break;
-          case "ArrowRight":
-            if (currentIndex < flashcards.length - 1) {
-              currentIndex++;
-              showingDefinition = false;
-              updateFlashcard();
-            }
-            break;
-          case " ":
-          case "Enter":
-            e.preventDefault();
-            showingDefinition = !showingDefinition;
-            updateFlashcard();
-            break;
-        }
-      });
-
-      async function loadFlashcards() {
-        if (!noteContent) {
-          flashcardDiv.innerHTML = "<p style='color: var(--error);'>No note content found! Please go back and select a note.</p>";
-          return;
-        }
-
-        showLoading();
-        flashcardDiv.textContent = "Loading flashcards...";
-
-        try {
-          const res = await fetch("/api/flashcards", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes: noteContent }),
-          });
-          
-          if (!res.ok) throw new Error("Failed to fetch flashcards.");
-          
-          const data = await res.json();
-          hideLoading();
-
-          // Convert the returned object to array of {term, definition}
-          flashcards = Object.entries(data).map(([term, definition]) => ({
-            term,
-            definition,
-          }));
-
-          if (flashcards.length === 0) {
-            flashcardDiv.textContent = "No flashcards generated from your notes.";
-            flashcardDiv.classList.remove("flipped");
-          } else {
-            currentIndex = 0;
-            showingDefinition = false;
-            updateFlashcard();
-          }
-        } catch (err) {
-          hideLoading();
-          flashcardDiv.innerHTML = `<p style='color: var(--error);'>Error: ${err.message}</p>`;
-        }
-      }
-
-      window.onload = loadFlashcards;
-    </script>
-  </body>
+window.onload = loadFlashcards;
+</script>
+</body>
 </html>
