@@ -66,6 +66,13 @@ class User(UserMixin, db.Model):
         seconds = int(remaining.total_seconds() % 60)
         return f"{minutes}m {seconds}s"
 
+from flask import send_from_directory
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('templates', 'dashboard.html')
+
+
 class Note(db.Model):
     __tablename__ = 'notes'
     id = db.Column(db.Integer, primary_key=True)
@@ -1824,6 +1831,7 @@ def learning_plan_ui(plan_id=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
