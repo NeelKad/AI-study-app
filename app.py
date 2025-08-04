@@ -1060,8 +1060,99 @@ def tutor_chat():
     session.modified = True
 
     return jsonify({"reply": reply})
+# Add this new API route to your app.py file
 
+@app.route('/api/generate-flashcards', methods=['POST'])
+@login_required
+@trial_required
+def api_generate_flashcards():
+    """Generate flashcards from note content and save to database"""
+    data = request.json
+    note_content = data.get('note_content', '')
+    note_id = data.get('note_id')
+    
+    if not note_content.strip():
+        return jsonify({'error': 'No note content provided'}), 400
+    
+    try:
+        # Generate flashcards using AI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a helpful AI that creates educational flashcards. Generate 8-12 high-quality flashcards from the provided notes. Focus on key concepts, definitions, important facts, and relationships. Output ONLY a valid JSON object where keys are terms/questions and values are definitions/answers. Do not include any other text or formatting."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Create flashcards from these notes:\n\n{note_content}"
+                }
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        text = response.choices[0].message.content.strip()
+        
+        # Try to extract JSON from the response
+        try:
+            # Look for JSON in the response
+            start_idx = text.find('{')
+            end_idx = text.rfind('}') + 1
+            if start_idx != -1 and end_idx != -1:
+                json_str = text[start_idx:end_idx]
+                flashcards_data = json.loads(json_str)
+            else:
+                flashcards_data = json.loads(text)
+        except json.JSONDecodeError:
+            # If JSON parsing fails, create a fallback
+            return jsonify({'error': 'Failed to generate valid flashcards format'}), 500
+        
+        if not flashcards_data:
+            return jsonify({'error': 'No flashcards were generated'}), 500
+        
+        # Delete existing flashcards for this note (if any)
+        if note_id:
+            Flashcard.query.filter(
+                Flashcard.user_id == current_user.id,
+                Flashcard.note_id == note_id
+            ).delete()
+        
+        # Save new flashcards to database
+        saved_cards = []
+        for term, definition in flashcards_data.items():
+            if term.strip() and definition.strip():  # Ensure both term and definition exist
+                card = Flashcard(
+                    user_id=current_user.id,
+                    note_id=note_id,
+                    term=str(term).strip(),
+                    definition=str(definition).strip(),
+                    next_review=datetime.utcnow()  # Available immediately for new cards
+                )
+                db.session.add(card)
+                saved_cards.append({
+                    'term': card.term,
+                    'definition': card.definition
+                })
+        
+        db.session.commit()
+        
+        if not saved_cards:
+            return jsonify({'error': 'No valid flashcards could be created'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully generated {len(saved_cards)} flashcards!',
+            'flashcards': saved_cards,
+            'count': len(saved_cards)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error generating flashcards: {str(e)}")  # For debugging
+        return jsonify({'error': f'Failed to generate flashcards: {str(e)}'}), 500
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
