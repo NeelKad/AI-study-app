@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, session
 from io import BytesIO
 from fpdf import FPDF
 from openai import OpenAI
@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from functools import wraps
+import math
 
 # SSL fix
 os.environ['SSL_CERT_FILE'] = certifi.where()
@@ -92,6 +93,139 @@ class StudyScheduleItem(db.Model):
     user = db.relationship('User', backref='schedule_items')
     note = db.relationship('Note', backref='schedule_items')
 
+# --- SPACED REPETITION MODELS ---
+class Flashcard(db.Model):
+    __tablename__ = 'flashcards'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=True)
+    term = db.Column(db.Text, nullable=False)
+    definition = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Spaced Repetition fields
+    ease_factor = db.Column(db.Float, default=2.5)  # How easy the card is (1.3-3.0)
+    interval = db.Column(db.Integer, default=1)     # Days until next review
+    repetitions = db.Column(db.Integer, default=0)  # Number of successful reviews
+    next_review = db.Column(db.DateTime, default=datetime.utcnow)
+    last_reviewed = db.Column(db.DateTime, nullable=True)
+    
+    # Learning state: 'new', 'learning', 'review', 'relearning'
+    state = db.Column(db.String(20), default='new')
+    
+    user = db.relationship('User', backref='flashcards')
+    note = db.relationship('Note', backref='flashcards')
+
+class CardReview(db.Model):
+    __tablename__ = 'card_reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    card_id = db.Column(db.Integer, db.ForeignKey('flashcards.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    quality = db.Column(db.Integer, nullable=False)  # 0-5 (fail to perfect)
+    response_time = db.Column(db.Integer, nullable=True)  # Seconds to answer
+    reviewed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    card = db.relationship('Flashcard', backref='reviews')
+    user = db.relationship('User')
+
+# --- SPACED REPETITION ALGORITHM ---
+class SpacedRepetitionEngine:
+    """
+    Implements the SM-2 algorithm with modern enhancements
+    """
+    
+    @staticmethod
+    def calculate_next_review(card, quality):
+        """
+        Calculate next review date based on SM-2 algorithm
+        
+        Quality scale:
+        0 - Complete blackout
+        1 - Incorrect response, correct answer remembered
+        2 - Incorrect response, correct answer seemed easy to recall
+        3 - Correct response, but required significant difficulty
+        4 - Correct response, after some hesitation
+        5 - Perfect response
+        """
+        
+        if quality < 3:  # Failed recall
+            # Reset to learning state
+            card.repetitions = 0
+            card.interval = 1
+            card.state = 'relearning' if card.state == 'review' else 'learning'
+            card.next_review = datetime.utcnow() + timedelta(minutes=10)  # Quick retry
+        else:
+            # Successful recall
+            if card.repetitions == 0:
+                card.interval = 1
+                card.state = 'learning'
+            elif card.repetitions == 1:
+                card.interval = 6
+                card.state = 'learning'
+            else:
+                # Calculate new interval using ease factor
+                card.interval = math.ceil(card.interval * card.ease_factor)
+                card.state = 'review'
+            
+            card.repetitions += 1
+            card.next_review = datetime.utcnow() + timedelta(days=card.interval)
+        
+        # Update ease factor based on quality
+        card.ease_factor = max(1.3, card.ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)))
+        
+        card.last_reviewed = datetime.utcnow()
+        
+        return card
+
+    @staticmethod
+    def get_due_cards(user_id, limit=20):
+        """Get cards that are due for review"""
+        now = datetime.utcnow()
+        
+        cards = Flashcard.query.filter(
+            Flashcard.user_id == user_id,
+            Flashcard.next_review <= now
+        ).order_by(
+            # Prioritize overdue cards, then by state priority
+            Flashcard.next_review.asc(),
+            db.case([
+                (Flashcard.state == 'new', 1),
+                (Flashcard.state == 'learning', 2),
+                (Flashcard.state == 'relearning', 3),
+                (Flashcard.state == 'review', 4)
+            ])
+        ).limit(limit).all()
+        
+        return cards
+
+    @staticmethod
+    def get_daily_stats(user_id):
+        """Get study statistics for today"""
+        today = datetime.utcnow().date()
+        tomorrow = today + timedelta(days=1)
+        
+        reviews_today = CardReview.query.filter(
+            CardReview.user_id == user_id,
+            CardReview.reviewed_at >= today,
+            CardReview.reviewed_at < tomorrow
+        ).count()
+        
+        due_cards = Flashcard.query.filter(
+            Flashcard.user_id == user_id,
+            Flashcard.next_review <= datetime.utcnow()
+        ).count()
+        
+        new_cards = Flashcard.query.filter(
+            Flashcard.user_id == user_id,
+            Flashcard.state == 'new'
+        ).count()
+        
+        return {
+            'reviews_today': reviews_today,
+            'due_cards': due_cards,
+            'new_cards': new_cards
+        }
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -168,6 +302,219 @@ def generate_ai_study_schedule(user_notes):
     except Exception as e:
         print(f"Error generating AI schedule: {e}")
         return []
+
+# --- SPACED REPETITION API ROUTES ---
+@app.route('/api/flashcards-enhanced', methods=['POST'])
+@login_required
+@trial_required
+def api_flashcards_enhanced():
+    """Generate and save flashcards with spaced repetition"""
+    data = request.json
+    notes = data.get('notes', '')
+    note_id = data.get('note_id')
+    
+    try:
+        # Generate flashcards using AI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions. Make 8-12 high-quality flashcards focusing on key concepts."},
+                {"role": "user", "content": notes}
+            ],
+            temperature=0.7,
+            max_tokens=800
+        )
+        
+        text = response.choices[0].message.content.strip()
+        flashcards_data = json.loads(text) if text else {}
+        
+        # Save flashcards to database
+        saved_cards = []
+        for term, definition in flashcards_data.items():
+            card = Flashcard(
+                user_id=current_user.id,
+                note_id=note_id,
+                term=term,
+                definition=definition,
+                next_review=datetime.utcnow()  # Available immediately
+            )
+            db.session.add(card)
+            saved_cards.append({
+                'term': term,
+                'definition': definition
+            })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'flashcards': saved_cards,
+            'count': len(saved_cards)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/study-session/start', methods=['POST'])
+@login_required
+@trial_required
+def start_study_session():
+    """Start a spaced repetition study session"""
+    data = request.json
+    session_type = data.get('type', 'review')  # 'review', 'new', 'mixed'
+    limit = min(int(data.get('limit', 20)), 50)  # Max 50 cards per session
+    
+    if session_type == 'new':
+        cards = Flashcard.query.filter(
+            Flashcard.user_id == current_user.id,
+            Flashcard.state == 'new'
+        ).limit(limit).all()
+    elif session_type == 'review':
+        cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit)
+    else:  # mixed
+        due_cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit // 2)
+        new_cards = Flashcard.query.filter(
+            Flashcard.user_id == current_user.id,
+            Flashcard.state == 'new'
+        ).limit(limit - len(due_cards)).all()
+        cards = due_cards + new_cards
+    
+    # Convert to JSON
+    cards_data = []
+    for card in cards:
+        cards_data.append({
+            'id': card.id,
+            'term': card.term,
+            'definition': card.definition,
+            'state': card.state,
+            'repetitions': card.repetitions,
+            'ease_factor': card.ease_factor,
+            'interval': card.interval,
+            'is_overdue': card.next_review < datetime.utcnow()
+        })
+    
+    return jsonify({
+        'cards': cards_data,
+        'session_stats': SpacedRepetitionEngine.get_daily_stats(current_user.id)
+    })
+
+@app.route('/api/review-card', methods=['POST'])
+@login_required
+@trial_required
+def review_card():
+    """Record a card review and update spaced repetition schedule"""
+    data = request.json
+    card_id = data.get('card_id')
+    quality = int(data.get('quality'))  # 0-5
+    response_time = data.get('response_time')  # seconds
+    
+    if quality < 0 or quality > 5:
+        return jsonify({'error': 'Quality must be between 0 and 5'}), 400
+    
+    card = Flashcard.query.filter(
+        Flashcard.id == card_id,
+        Flashcard.user_id == current_user.id
+    ).first()
+    
+    if not card:
+        return jsonify({'error': 'Card not found'}), 404
+    
+    try:
+        # Record the review
+        review = CardReview(
+            card_id=card_id,
+            user_id=current_user.id,
+            quality=quality,
+            response_time=response_time
+        )
+        db.session.add(review)
+        
+        # Update card schedule
+        SpacedRepetitionEngine.calculate_next_review(card, quality)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'next_review': card.next_review.isoformat(),
+            'interval_days': card.interval,
+            'ease_factor': card.ease_factor,
+            'state': card.state,
+            'message': get_feedback_message(quality, card.interval)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/flashcard-stats', methods=['GET'])
+@login_required
+@trial_required
+def flashcard_stats():
+    """Get comprehensive flashcard statistics"""
+    user_id = current_user.id
+    
+    # Basic counts
+    total_cards = Flashcard.query.filter_by(user_id=user_id).count()
+    due_cards = Flashcard.query.filter(
+        Flashcard.user_id == user_id,
+        Flashcard.next_review <= datetime.utcnow()
+    ).count()
+    
+    # Cards by state
+    state_counts = db.session.query(
+        Flashcard.state,
+        db.func.count(Flashcard.id)
+    ).filter_by(user_id=user_id).group_by(Flashcard.state).all()
+    
+    # Recent review performance
+    recent_reviews = db.session.query(
+        db.func.avg(CardReview.quality),
+        db.func.count(CardReview.id)
+    ).filter(
+        CardReview.user_id == user_id,
+        CardReview.reviewed_at >= datetime.utcnow() - timedelta(days=7)
+    ).first()
+    
+    # Learning curve data (last 30 days)
+    learning_curve = []
+    for i in range(30):
+        date = datetime.utcnow().date() - timedelta(days=29-i)
+        reviews = CardReview.query.filter(
+            CardReview.user_id == user_id,
+            CardReview.reviewed_at >= date,
+            CardReview.reviewed_at < date + timedelta(days=1)
+        ).count()
+        learning_curve.append({
+            'date': date.isoformat(),
+            'reviews': reviews
+        })
+    
+    return jsonify({
+        'total_cards': total_cards,
+        'due_cards': due_cards,
+        'daily_stats': SpacedRepetitionEngine.get_daily_stats(user_id),
+        'state_distribution': dict(state_counts),
+        'recent_performance': {
+            'avg_quality': float(recent_reviews[0]) if recent_reviews[0] else 0,
+            'review_count': recent_reviews[1]
+        },
+        'learning_curve': learning_curve
+    })
+
+def get_feedback_message(quality, interval):
+    """Generate encouraging feedback based on performance"""
+    if quality >= 5:
+        return f"Perfect! See you in {interval} days. 🎉"
+    elif quality >= 4:
+        return f"Great job! Next review in {interval} days. ✨"
+    elif quality >= 3:
+        return f"Good effort! Keep practicing. Next review in {interval} days."
+    elif quality >= 1:
+        return "Don't worry, this is part of learning! You'll see this card again soon."
+    else:
+        return "No problem! Let's try this again in a few minutes."
 
 # --- SCHEDULE API ROUTES ---
 @app.route('/api/generate-schedule', methods=['POST'])
@@ -460,6 +807,9 @@ def delete_note(note_id):
         # Also delete any schedule items related to this note
         StudyScheduleItem.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
         
+        # Delete any flashcards related to this note
+        Flashcard.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
         db.session.delete(note)
         db.session.commit()
         
@@ -488,19 +838,36 @@ def index():
 def save_note_alias():
     return add_note()
 
-# --- STUDY TOOLS (UI) ---
-@app.route('/flashcards')
-@app.route('/flashcards/<int:note_id>')
+# --- ENHANCED FLASHCARD ROUTES ---
+@app.route('/flashcards-sr')
+@app.route('/flashcards-sr/<int:note_id>')
 @login_required
 @trial_required
-def flashcards(note_id=None):
+def flashcards_sr(note_id=None):
+    """Enhanced flashcards page with spaced repetition"""
     note_content = None
     if note_id:
         note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
         if note:
             note_content = note.content
-    return render_template('flashcards.html', note_content=note_content, user=current_user)
+    
+    return render_template('flashcards_sr.html', 
+                         note_content=note_content, 
+                         note_id=note_id,
+                         user=current_user)
 
+# Update your existing flashcards route to redirect to the new one
+@app.route('/flashcards')
+@app.route('/flashcards/<int:note_id>')
+@login_required  
+@trial_required
+def flashcards_redirect(note_id=None):
+    """Redirect to enhanced flashcards"""
+    if note_id:
+        return redirect(url_for('flashcards_sr', note_id=note_id))
+    return redirect(url_for('flashcards_sr'))
+
+# --- STUDY TOOLS (UI) ---
 @app.route('/questions')
 @app.route('/questions/<int:note_id>')
 @login_required
@@ -556,7 +923,7 @@ def my_notes():
     notes = Note.query.filter_by(user_id=current_user.id).all()
     return render_template('my_notes.html', notes=notes)
 
-# --- OPENAI API ROUTES ---
+# --- OPENAI API ROUTES (Legacy - keeping for compatibility) ---
 @app.route('/api/flashcards', methods=['POST'])
 @login_required
 @trial_required
@@ -660,9 +1027,6 @@ def api_pastpaper():
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
 
-
-from flask import session
-
 @app.route("/api/tutor_chat", methods=["POST"])
 @login_required
 @trial_required
@@ -697,7 +1061,5 @@ def tutor_chat():
 
     return jsonify({"reply": reply})
 
-
 if __name__ == '__main__':
     app.run(debug=True)
-
