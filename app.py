@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, session
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
 from io import BytesIO
 from fpdf import FPDF
 from openai import OpenAI
@@ -92,19 +92,6 @@ class StudyScheduleItem(db.Model):
     user = db.relationship('User', backref='schedule_items')
     note = db.relationship('Note', backref='schedule_items')
 
-# **FLASHCARD MODEL**
-class Flashcard(db.Model):
-    __tablename__ = 'flashcards'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    term = db.Column(db.String(255), nullable=False)
-    definition = db.Column(db.Text, nullable=False)
-    box = db.Column(db.Integer, default=1)  # spaced repetition box
-    next_review = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    user = db.relationship('User', backref='flashcards')
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -125,89 +112,231 @@ def trial_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- FLASHCARD ROUTES ---
-
-@app.route("/flashcards")
-@login_required
-@trial_required
-def flashcards_menu():
-    return render_template("flashcards.html")
-
-@app.route("/flashcards/all")
-@login_required
-@trial_required
-def flashcards_all():
-    cards = Flashcard.query.filter_by(user_id=current_user.id).order_by(Flashcard.created_at.desc()).all()
-    return render_template("flashcards_all.html", flashcards=cards)
-
-@app.route("/flashcards/review")
-@login_required
-@trial_required
-def flashcards_review():
-    now = datetime.utcnow()
-    due_cards = Flashcard.query.filter(
-        Flashcard.user_id == current_user.id,
-        Flashcard.next_review <= now,
-        Flashcard.box < 6
-    ).all()
-    return render_template("flashcards_review.html", flashcards=due_cards)
-
-@app.route("/flashcards/generate", methods=["POST"])
-@login_required
-@trial_required
-def api_flashcards_generate():
-    notes = request.json.get("notes", "")
-    if not notes.strip():
-        return jsonify({"error": "Notes cannot be empty"}), 400
+# --- AI SCHEDULE GENERATION ---
+def generate_ai_study_schedule(user_notes):
+    """Generate AI-powered study schedule based on user's notes"""
+    if not user_notes:
+        return []
+    
+    # Create a summary of all notes for the AI
+    notes_summary = ""
+    for note in user_notes:
+        notes_summary += f"Title: {note.title}\nContent: {note.content[:200]}...\n\n"
+    
     try:
-        prompt = "Generate 10 flashcards from these notes in JSON format: {\"term\": \"definition\"}. Notes:\n" + notes
+        prompt = f"""
+        Based on the following study notes, create a personalized study schedule. Generate 5-8 study tasks that will help the student learn effectively.
+
+        Notes:
+        {notes_summary}
+
+        For each study task, provide:
+        1. A clear title
+        2. A brief description of what to study
+        3. Recommended study action (flashcards, questions, summarise, tutor, or pastpaper)
+        4. Priority level (high, medium, low)
+        5. Estimated time in minutes (10-60)
+
+        Prioritize recent notes and complex topics. Mix different study methods for variety.
+        
+        Respond with a JSON array where each item has these fields:
+        - title: string
+        - description: string
+        - study_action: string (flashcards/questions/summarise/tutor/pastpaper)
+        - priority: string (high/medium/low)
+        - estimated_time: integer (minutes)
+        - note_title: string (which note this relates to)
+        """
+
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=700,
-            temperature=0.7
+            temperature=0.7,
+            max_tokens=1000
         )
-        data = response.choices[0].message.content.strip()
-        flashcards = json.loads(data)
-        for term, definition in flashcards.items():
-            new_card = Flashcard(
-                user_id=current_user.id,
-                term=term,
-                definition=definition,
-                box=1,
-                next_review=datetime.utcnow()
-            )
-            db.session.add(new_card)
-        db.session.commit()
-        return jsonify({"message": "Flashcards generated successfully", "count": len(flashcards)})
+        
+        ai_response = response.choices[0].message.content.strip()
+        # Extract JSON from response (in case there's extra text)
+        start_idx = ai_response.find('[')
+        end_idx = ai_response.rfind(']') + 1
+        if start_idx != -1 and end_idx != -1:
+            json_str = ai_response[start_idx:end_idx]
+            schedule_items = json.loads(json_str)
+            return schedule_items
+        else:
+            return []
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error generating AI schedule: {e}")
+        return []
 
-@app.route("/flashcards/grade/<int:card_id>", methods=["POST"])
+# --- SCHEDULE API ROUTES ---
+@app.route('/api/generate-schedule', methods=['POST'])
 @login_required
 @trial_required
-def grade_flashcard(card_id):
+def api_generate_schedule():
+    """Generate AI study schedule"""
+    try:
+        # Get user's notes
+        user_notes = Note.query.filter_by(user_id=current_user.id).all()
+        
+        if not user_notes:
+            return jsonify({"error": "No notes found to generate schedule from"}), 400
+        
+        # Generate AI schedule
+        ai_schedule = generate_ai_study_schedule(user_notes)
+        
+        if not ai_schedule:
+            return jsonify({"error": "Failed to generate schedule"}), 500
+        
+        # Clear existing AI-generated items
+        StudyScheduleItem.query.filter_by(user_id=current_user.id, is_ai_generated=True).delete()
+        
+        # Save new schedule items to database
+        saved_items = []
+        for item in ai_schedule:
+            # Find matching note
+            note = None
+            if 'note_title' in item:
+                note = Note.query.filter_by(
+                    user_id=current_user.id, 
+                    title=item['note_title']
+                ).first()
+                if not note:
+                    # Try partial match
+                    note = Note.query.filter(
+                        Note.user_id == current_user.id,
+                        Note.title.like(f"%{item['note_title']}%")
+                    ).first()
+            
+            schedule_item = StudyScheduleItem(
+                user_id=current_user.id,
+                title=item.get('title', 'Study Task'),
+                description=item.get('description', ''),
+                study_action=item.get('study_action', 'summarise'),
+                priority=item.get('priority', 'medium'),
+                estimated_time=item.get('estimated_time', 15),
+                note_id=note.id if note else None,
+                is_ai_generated=True
+            )
+            db.session.add(schedule_item)
+            saved_items.append({
+                'title': schedule_item.title,
+                'description': schedule_item.description,
+                'study_action': schedule_item.study_action,
+                'priority': schedule_item.priority,
+                'estimated_time': schedule_item.estimated_time
+            })
+        
+        db.session.commit()
+        return jsonify({"message": "Schedule generated successfully", "items": saved_items})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/add-schedule-item', methods=['POST'])
+@login_required
+@trial_required
+def api_add_schedule_item():
+    """Add custom schedule item"""
     data = request.json
-    action = data.get("action")
-    card = Flashcard.query.filter_by(id=card_id, user_id=current_user.id).first()
-    if not card:
-        return jsonify({"error": "Card not found"}), 404
+    
+    try:
+        schedule_item = StudyScheduleItem(
+            user_id=current_user.id,
+            title=data.get('title', ''),
+            description=data.get('description', ''),
+            study_action=data.get('study_action', 'summarise'),
+            priority=data.get('priority', 'medium'),
+            estimated_time=int(data.get('estimated_time', 15)),
+            note_id=data.get('note_id') if data.get('note_id') else None,
+            is_ai_generated=False
+        )
+        
+        db.session.add(schedule_item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item added successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
-    intervals = [10, 60, 1440, 4320, 10080]  # in minutes: 10m,1h,1d,3d,7d
-    if action == "again":
-        card.box = 1
-    elif action == "hard":
-        card.box = max(1, card.box)
-    elif action == "good":
-        card.box = min(5, card.box + 1)
-    elif action == "easy":
-        card.box = min(5, card.box + 2)
+@app.route('/api/toggle-schedule-item/<int:item_id>', methods=['POST'])
+@login_required
+@trial_required
+def api_toggle_schedule_item(item_id):
+    """Toggle completion status of schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        item.completed = not item.completed
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item updated", "completed": item.completed})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
-    card.next_review = datetime.utcnow() + timedelta(minutes=intervals[card.box - 1])
-    db.session.commit()
-    return jsonify({"message": "Card updated", "next_review": card.next_review.isoformat()})
+@app.route('/api/delete-schedule-item/<int:item_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def api_delete_schedule_item(item_id):
+    """Delete schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        db.session.delete(item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
-# --- (your existing routes below) ---
+# --- AUTH ROUTES ---
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.', 'error')
+            return render_template('signup.html')
+        hashed_pw = generate_password_hash(password)
+        trial_expiry = datetime.utcnow() + timedelta(minutes=10)  # 10 min trial
+        new_user = User(email=email, password=hashed_pw, trial_expires_at=trial_expiry)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Account created! Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            if user.trial_expires_at is None and not user.has_unlimited_access:
+                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=10)
+                db.session.commit()
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        flash('Invalid credentials.', 'error')
+    return render_template('login.html')
 
 @app.route('/logout')
 @login_required
@@ -379,7 +508,7 @@ def flashcards(note_id=None):
 def questions(note_id=None):
     note_content = None
     if note_id:
-        note = Note.query.filter_by(id=note_id, user=current_user.id).first()
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
         if note:
             note_content = note.content
     return render_template('questions.html', note_content=note_content, user=current_user)
@@ -531,6 +660,8 @@ def api_pastpaper():
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
 
+
+from flask import session
 
 @app.route("/api/tutor_chat", methods=["POST"])
 @login_required
