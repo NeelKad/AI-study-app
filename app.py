@@ -620,6 +620,13 @@ def grade_flashcard(card_id):
     db.session.commit()
     return jsonify({"message": "Card updated", "next_review": card.next_review.isoformat()})
 
+@app.route("/flashcards/<int:card_id>")
+@login_required
+def flashcard_detail(card_id):
+    card = Flashcard.query.filter_by(id=card_id, user_id=current_user.id).first()
+    if not card:
+        abort(404)
+    return render_template("flashcard_detail.html", card=card)
 
 
 @app.route('/api/questions', methods=['POST'])
@@ -744,6 +751,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
