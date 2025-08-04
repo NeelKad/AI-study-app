@@ -2289,7 +2289,16 @@ def api_archive_learning_plan(plan_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/learning-plan-ui')
+@login_required
+@trial_required
+def learning_plan_ui():
+    # You can customize the context as needed
+    plans = LearningPlan.query.filter_by(user_id=current_user.id).all()
+    return render_template('learning_plan_ui.html', plans=plans)
+
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
