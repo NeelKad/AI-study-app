@@ -66,16 +66,6 @@ class User(UserMixin, db.Model):
         seconds = int(remaining.total_seconds() % 60)
         return f"{minutes}m {seconds}s"
 
-from flask import send_from_directory
-
-from flask import render_template
-
-@app.route('/')
-def index():
-    return render_template('dashboard.html')
-
-
-
 class Note(db.Model):
     __tablename__ = 'notes'
     id = db.Column(db.Integer, primary_key=True)
@@ -366,8 +356,6 @@ def api_flashcards_enhanced():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-# Replace the existing start_study_session route in app.py with this updated version:
-
 @app.route('/api/study-session/start', methods=['POST'])
 @login_required
 @trial_required
@@ -376,85 +364,21 @@ def start_study_session():
     data = request.json
     session_type = data.get('type', 'review')  # 'review', 'new', 'mixed'
     limit = min(int(data.get('limit', 20)), 50)  # Max 50 cards per session
-    note_id = data.get('note_id')  # Optional: focus on specific note
-    
-    # Base query
-    base_query = Flashcard.query.filter(Flashcard.user_id == current_user.id)
-    
-    # If note_id is provided, prioritize cards from that note
-    if note_id:
-        note_cards_query = base_query.filter(Flashcard.note_id == note_id)
-    else:
-        note_cards_query = base_query
     
     if session_type == 'new':
-        # Get new cards, prioritizing the specific note if provided
-        if note_id:
-            cards = note_cards_query.filter(Flashcard.state == 'new').limit(limit).all()
-            # If not enough cards from this note, fill with other new cards
-            if len(cards) < limit:
-                remaining_limit = limit - len(cards)
-                other_cards = base_query.filter(
-                    Flashcard.state == 'new',
-                    Flashcard.note_id != note_id
-                ).limit(remaining_limit).all()
-                cards.extend(other_cards)
-        else:
-            cards = base_query.filter(Flashcard.state == 'new').limit(limit).all()
-            
+        cards = Flashcard.query.filter(
+            Flashcard.user_id == current_user.id,
+            Flashcard.state == 'new'
+        ).limit(limit).all()
     elif session_type == 'review':
-        # Get due cards for review
-        now = datetime.utcnow()
-        if note_id:
-            cards = note_cards_query.filter(Flashcard.next_review <= now).limit(limit).all()
-            # If not enough due cards from this note, fill with other due cards
-            if len(cards) < limit:
-                remaining_limit = limit - len(cards)
-                other_cards = base_query.filter(
-                    Flashcard.next_review <= now,
-                    Flashcard.note_id != note_id
-                ).limit(remaining_limit).all()
-                cards.extend(other_cards)
-        else:
-            cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit)
-            
+        cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit)
     else:  # mixed
-        now = datetime.utcnow()
-        half_limit = limit // 2
-        
-        if note_id:
-            # Get due cards from the specific note first
-            due_cards = note_cards_query.filter(Flashcard.next_review <= now).limit(half_limit).all()
-            # Get new cards from the specific note
-            new_cards = note_cards_query.filter(Flashcard.state == 'new').limit(limit - len(due_cards)).all()
-            
-            # Fill remaining slots with cards from other notes if needed
-            total_cards = len(due_cards) + len(new_cards)
-            if total_cards < limit:
-                remaining_limit = limit - total_cards
-                # Get additional due cards from other notes
-                if len(due_cards) < half_limit:
-                    additional_due = base_query.filter(
-                        Flashcard.next_review <= now,
-                        Flashcard.note_id != note_id
-                    ).limit(remaining_limit // 2).all()
-                    due_cards.extend(additional_due)
-                
-                # Get additional new cards from other notes
-                remaining_after_due = limit - len(due_cards) - len(new_cards)
-                if remaining_after_due > 0:
-                    additional_new = base_query.filter(
-                        Flashcard.state == 'new',
-                        Flashcard.note_id != note_id
-                    ).limit(remaining_after_due).all()
-                    new_cards.extend(additional_new)
-            
-            cards = due_cards + new_cards
-        else:
-            # Original mixed logic for all notes
-            due_cards = SpacedRepetitionEngine.get_due_cards(current_user.id, half_limit)
-            new_cards = base_query.filter(Flashcard.state == 'new').limit(limit - len(due_cards)).all()
-            cards = due_cards + new_cards
+        due_cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit // 2)
+        new_cards = Flashcard.query.filter(
+            Flashcard.user_id == current_user.id,
+            Flashcard.state == 'new'
+        ).limit(limit - len(due_cards)).all()
+        cards = due_cards + new_cards
     
     # Convert to JSON
     cards_data = []
@@ -467,15 +391,12 @@ def start_study_session():
             'repetitions': card.repetitions,
             'ease_factor': card.ease_factor,
             'interval': card.interval,
-            'is_overdue': card.next_review < datetime.utcnow(),
-            'note_id': card.note_id  # Include note_id for tracking
+            'is_overdue': card.next_review < datetime.utcnow()
         })
     
     return jsonify({
         'cards': cards_data,
-        'session_stats': SpacedRepetitionEngine.get_daily_stats(current_user.id),
-        'note_specific': bool(note_id),
-        'note_id': note_id
+        'session_stats': SpacedRepetitionEngine.get_daily_stats(current_user.id)
     })
 
 @app.route('/api/review-card', methods=['POST'])
@@ -497,9 +418,7 @@ def review_card():
     ).first()
     
     if not card:
-        return jsonify({'error':
-                        
-                        'Card not found'}), 404
+        return jsonify({'error': 'Card not found'}), 404
     
     try:
         # Record the review
@@ -535,98 +454,730 @@ def review_card():
 def flashcard_stats():
     """Get comprehensive flashcard statistics"""
     user_id = current_user.id
-    note_id = request.args.get('note_id')  # Optional parameter for note-specific stats
-    
-    # Base query
-    base_query = Flashcard.query.filter_by(user_id=user_id)
-    
-    # Filter by note if specified
-    if note_id:
-        base_query = base_query.filter_by(note_id=note_id)
     
     # Basic counts
-    total_cards = base_query.count()
+    total_cards = Flashcard.query.filter_by(user_id=user_id).count()
+    due_cards = Flashcard.query.filter(
+        Flashcard.user_id == user_id,
+        Flashcard.next_review <= datetime.utcnow()
+    ).count()
     
-    # Due cards (considering note filter)
-    due_cards_query = base_query.filter(Flashcard.next_review <= datetime.utcnow())
-    due_cards = due_cards_query.count()
-    
-    # Cards by state (considering note filter)
+    # Cards by state
     state_counts = db.session.query(
         Flashcard.state,
         db.func.count(Flashcard.id)
-    ).filter_by(user_id=user_id)
-
-    if note_id:
-        state_counts = state_counts.filter_by(note_id=note_id)
-
-    state_counts = state_counts.group_by(Flashcard.state).all()
-
-    # Daily stats (always global, not note-specific)
-    daily_stats = SpacedRepetitionEngine.get_daily_stats(user_id)
-
-    # If note-specific, adjust new cards count
-    if note_id:
-        new_cards_for_note = base_query.filter_by(state='new').count()
-        daily_stats['new_cards'] = new_cards_for_note
-
-    # Recent review performance (considering note filter)
-    recent_reviews_query = db.session.query(
+    ).filter_by(user_id=user_id).group_by(Flashcard.state).all()
+    
+    # Recent review performance
+    recent_reviews = db.session.query(
         db.func.avg(CardReview.quality),
         db.func.count(CardReview.id)
-    ).join(Flashcard).filter(
-        Flashcard.user_id == user_id,
+    ).filter(
+        CardReview.user_id == user_id,
         CardReview.reviewed_at >= datetime.utcnow() - timedelta(days=7)
-    )
-
-    if note_id:
-        recent_reviews_query = recent_reviews_query.filter(Flashcard.note_id == note_id)
-
-    recent_reviews = recent_reviews_query.first()
-
-    # Learning curve data (last 30 days) - always global for now
+    ).first()
+    
+    # Learning curve data (last 30 days)
     learning_curve = []
     for i in range(30):
         date = datetime.utcnow().date() - timedelta(days=29-i)
-        reviews_query = CardReview.query.filter(
+        reviews = CardReview.query.filter(
             CardReview.user_id == user_id,
             CardReview.reviewed_at >= date,
             CardReview.reviewed_at < date + timedelta(days=1)
-        )
-
-        # If note-specific, join with flashcards table
-        if note_id:
-            reviews_query = reviews_query.join(Flashcard).filter(Flashcard.note_id == note_id)
-
-        reviews = reviews_query.count()
+        ).count()
         learning_curve.append({
             'date': date.isoformat(),
             'reviews': reviews
         })
     
-    response_data = {
+    return jsonify({
         'total_cards': total_cards,
         'due_cards': due_cards,
-        'daily_stats': daily_stats,
+        'daily_stats': SpacedRepetitionEngine.get_daily_stats(user_id),
         'state_distribution': dict(state_counts),
         'recent_performance': {
             'avg_quality': float(recent_reviews[0]) if recent_reviews[0] else 0,
-            'review_count': recent_reviews[1] if recent_reviews[1] else 0
+            'review_count': recent_reviews[1]
         },
         'learning_curve': learning_curve
-    }
+    })
+
+def get_feedback_message(quality, interval):
+    """Generate encouraging feedback based on performance"""
+    if quality >= 5:
+        return f"Perfect! See you in {interval} days. 🎉"
+    elif quality >= 4:
+        return f"Great job! Next review in {interval} days. ✨"
+    elif quality >= 3:
+        return f"Good effort! Keep practicing. Next review in {interval} days."
+    elif quality >= 1:
+        return "Don't worry, this is part of learning! You'll see this card again soon."
+    else:
+        return "No problem! Let's try this again in a few minutes."
+
+# --- SCHEDULE API ROUTES ---
+@app.route('/api/generate-schedule', methods=['POST'])
+@login_required
+@trial_required
+def api_generate_schedule():
+    """Generate AI study schedule"""
+    try:
+        # Get user's notes
+        user_notes = Note.query.filter_by(user_id=current_user.id).all()
+        
+        if not user_notes:
+            return jsonify({"error": "No notes found to generate schedule from"}), 400
+        
+        # Generate AI schedule
+        ai_schedule = generate_ai_study_schedule(user_notes)
+        
+        if not ai_schedule:
+            return jsonify({"error": "Failed to generate schedule"}), 500
+        
+        # Clear existing AI-generated items
+        StudyScheduleItem.query.filter_by(user_id=current_user.id, is_ai_generated=True).delete()
+        
+        # Save new schedule items to database
+        saved_items = []
+        for item in ai_schedule:
+            # Find matching note
+            note = None
+            if 'note_title' in item:
+                note = Note.query.filter_by(
+                    user_id=current_user.id, 
+                    title=item['note_title']
+                ).first()
+                if not note:
+                    # Try partial match
+                    note = Note.query.filter(
+                        Note.user_id == current_user.id,
+                        Note.title.like(f"%{item['note_title']}%")
+                    ).first()
+            
+            schedule_item = StudyScheduleItem(
+                user_id=current_user.id,
+                title=item.get('title', 'Study Task'),
+                description=item.get('description', ''),
+                study_action=item.get('study_action', 'summarise'),
+                priority=item.get('priority', 'medium'),
+                estimated_time=item.get('estimated_time', 15),
+                note_id=note.id if note else None,
+                is_ai_generated=True
+            )
+            db.session.add(schedule_item)
+            saved_items.append({
+                'title': schedule_item.title,
+                'description': schedule_item.description,
+                'study_action': schedule_item.study_action,
+                'priority': schedule_item.priority,
+                'estimated_time': schedule_item.estimated_time
+            })
+        
+        db.session.commit()
+        return jsonify({"message": "Schedule generated successfully", "items": saved_items})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/add-schedule-item', methods=['POST'])
+@login_required
+@trial_required
+def api_add_schedule_item():
+    """Add custom schedule item"""
+    data = request.json
     
-    # Add note-specific context
+    try:
+        schedule_item = StudyScheduleItem(
+            user_id=current_user.id,
+            title=data.get('title', ''),
+            description=data.get('description', ''),
+            study_action=data.get('study_action', 'summarise'),
+            priority=data.get('priority', 'medium'),
+            estimated_time=int(data.get('estimated_time', 15)),
+            note_id=data.get('note_id') if data.get('note_id') else None,
+            is_ai_generated=False
+        )
+        
+        db.session.add(schedule_item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item added successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/toggle-schedule-item/<int:item_id>', methods=['POST'])
+@login_required
+@trial_required
+def api_toggle_schedule_item(item_id):
+    """Toggle completion status of schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        item.completed = not item.completed
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item updated", "completed": item.completed})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/delete-schedule-item/<int:item_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def api_delete_schedule_item(item_id):
+    """Delete schedule item"""
+    try:
+        item = StudyScheduleItem.query.filter_by(
+            id=item_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not item:
+            return jsonify({"error": "Schedule item not found"}), 404
+        
+        db.session.delete(item)
+        db.session.commit()
+        
+        return jsonify({"message": "Schedule item deleted"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# --- AUTH ROUTES ---
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.', 'error')
+            return render_template('signup.html')
+        hashed_pw = generate_password_hash(password)
+        trial_expiry = datetime.utcnow() + timedelta(minutes=10)  # 10 min trial
+        new_user = User(email=email, password=hashed_pw, trial_expires_at=trial_expiry)
+        db.session.add(new_user)
+        db.session.commit()
+        flash('Account created! Please log in.', 'success')
+        return redirect(url_for('login'))
+    return render_template('signup.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            if user.trial_expires_at is None and not user.has_unlimited_access:
+                user.trial_expires_at = datetime.utcnow() + timedelta(minutes=10)
+                db.session.commit()
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        flash('Invalid credentials.', 'error')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+# --- TRIAL EXPIRED ---
+@app.route('/trial-expired')
+@login_required
+def trial_expired():
+    return render_template('trial_expired.html', user=current_user)
+
+@app.route('/trial-expired/unlock', methods=['POST'])
+@login_required
+def trial_unlock():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
+    entered_key = request.form.get('admin_key', '')
+
+    if entered_key != ADMIN_KEY:
+        flash('Invalid admin key!', 'error')
+        return redirect(url_for('trial_expired'))
+
+    user = current_user
+    user.has_unlimited_access = True
+    db.session.commit()
+
+    flash('Unlimited access granted! Welcome back.', 'success')
+    return redirect(url_for('dashboard'))
+
+# --- ADMIN ROUTES ---
+@app.route('/admin/grant-access', methods=['GET', 'POST'])
+def admin_grant_access():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
+    if request.method == 'POST':
+        provided_key = request.form.get('admin_key')
+        user_email = request.form.get('user_email')
+        if provided_key != ADMIN_KEY:
+            flash('Invalid admin key!', 'error')
+            return render_template('admin_grant_access.html')
+        user = User.query.filter_by(email=user_email).first()
+        if not user:
+            flash('User not found!', 'error')
+            return render_template('admin_grant_access.html')
+        user.has_unlimited_access = True
+        db.session.commit()
+        flash(f'Unlimited access granted to {user_email}!', 'success')
+        return render_template('admin_grant_access.html')
+    return render_template('admin_grant_access.html')
+
+@app.route('/admin/users')
+def admin_users():
+    ADMIN_KEY = os.getenv("ADMIN_KEY", "your-secret-admin-key-here")
+    provided_key = request.args.get('key')
+    if provided_key != ADMIN_KEY:
+        return "Access denied", 403
+    users = User.query.all()
+    return render_template('admin_users.html', users=users)
+
+# --- TRIAL STATUS API ---
+@app.route('/api/trial-status')
+@login_required
+def api_trial_status():
+    if current_user.has_unlimited_access:
+        return jsonify({"unlimited": True, "expired": False, "time_remaining": "Unlimited", "remaining_seconds": -1})
+    if current_user.is_trial_expired():
+        return jsonify({"unlimited": False, "expired": True, "time_remaining": "Expired", "remaining_seconds": 0})
+    if not current_user.trial_expires_at:
+        return jsonify({"unlimited": False, "expired": True, "time_remaining": "No trial expiry set", "remaining_seconds": 0})
+    remaining = current_user.trial_expires_at - datetime.utcnow()
+    remaining_seconds = int(remaining.total_seconds())
+    minutes = remaining_seconds // 60
+    seconds = remaining_seconds % 60
+    return jsonify({"unlimited": False, "expired": False, "time_remaining": f"{minutes}m {seconds}s", "remaining_seconds": remaining_seconds})
+
+# --- DASHBOARD & NOTES ---
+@app.route('/dashboard')
+@login_required
+@trial_required
+def dashboard():
+    notes = Note.query.filter_by(user_id=current_user.id).all()
+    schedule_items = StudyScheduleItem.query.filter_by(user_id=current_user.id).order_by(
+        StudyScheduleItem.completed.asc(),
+        StudyScheduleItem.priority.desc(),
+        StudyScheduleItem.created_at.desc()
+    ).all()
+    return render_template('dashboard.html', notes=notes, schedule_items=schedule_items, email=current_user.email, user=current_user)
+
+@app.route('/enter-notes')
+@login_required
+@trial_required
+def enter_notes():
+    return render_template('index.html', user=current_user)
+
+@app.route('/add-note', methods=['POST'])
+@login_required
+@trial_required
+def add_note():
+    title = request.form.get('title')
+    content = request.form.get('content')
+    if not title or not content:
+        flash("Please provide both title and content.", "error")
+        return redirect(url_for('enter_notes'))
+    note = Note(user_id=current_user.id, title=title, content=content)
+    db.session.add(note)
+    db.session.commit()
+    flash("Note saved successfully!", "success")
+    return redirect(url_for('dashboard'))
+
+@app.route('/delete-note/<int:note_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def delete_note(note_id):
+    """Delete a note"""
+    try:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        
+        if not note:
+            return jsonify({"error": "Note not found or access denied"}), 404
+        
+        # Also delete any schedule items related to this note
+        StudyScheduleItem.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
+        # Delete any flashcards related to this note
+        Flashcard.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
+        db.session.delete(note)
+        db.session.commit()
+        
+        return jsonify({"message": "Note deleted successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/note/<int:note_id>')
+@login_required
+@trial_required
+def view_note(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if note:
+        return render_template('view_note.html', title=note.title, content=note.content, note_id=note.id)
+    flash("Note not found or access denied.", "error")
+    return redirect(url_for('dashboard'))
+
+@app.route('/')
+def index():
+    return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
+
+@app.route('/save-note', methods=['POST'])
+@login_required
+@trial_required
+def save_note_alias():
+    return add_note()
+
+# --- ENHANCED FLASHCARD ROUTES ---
+@app.route('/flashcards-sr')
+@app.route('/flashcards-sr/<int:note_id>')
+@login_required
+@trial_required
+def flashcards_sr(note_id=None):
+    """Enhanced flashcards page with spaced repetition"""
+    note_content = None
     if note_id:
-        note = Note.query.filter_by(id=note_id, user_id=user_id).first()
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
         if note:
-            response_data['note_context'] = {
-                'note_id': note_id,
-                'note_title': note.title,
-                'is_note_specific': True
-            }
+            note_content = note.content
     
-    return jsonify(response_data)
+    return render_template('flashcards.html', 
+                         note_content=note_content, 
+                         note_id=note_id,
+                         user=current_user)
+
+# Update your existing flashcards route to redirect to the new one
+@app.route('/flashcards')
+@app.route('/flashcards/<int:note_id>')
+@login_required  
+@trial_required
+def flashcards_redirect(note_id=None):
+    """Redirect to enhanced flashcards"""
+    if note_id:
+        return redirect(url_for('flashcards_sr', note_id=note_id))
+    return redirect(url_for('flashcards_sr'))
+
+# --- STUDY TOOLS (UI) ---
+@app.route('/questions')
+@app.route('/questions/<int:note_id>')
+@login_required
+@trial_required
+def questions(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('questions.html', note_content=note_content, user=current_user)
+
+@app.route('/summarise')
+@app.route('/summarise/<int:note_id>')
+@login_required
+@trial_required
+def summarise(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('summarise.html', note_content=note_content, user=current_user)
+
+@app.route('/pastpaper')
+@app.route('/pastpaper/<int:note_id>')
+@login_required
+@trial_required
+def pastpaper(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('pastpaper.html', note_content=note_content, user=current_user)
+
+@app.route('/tutor')
+@app.route('/tutor/<int:note_id>')
+@login_required
+@trial_required
+def tutor(note_id=None):
+    note_content = None
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+        if note:
+            note_content = note.content
+    return render_template('tutor.html', note_content=note_content, user=current_user)
+
+@app.route('/my-notes')
+@login_required
+@trial_required
+def my_notes():
+    notes = Note.query.filter_by(user_id=current_user.id).all()
+    return render_template('my_notes.html', notes=notes)
+
+# --- OPENAI API ROUTES (Legacy - keeping for compatibility) ---
+@app.route('/api/flashcards', methods=['POST'])
+@login_required
+@trial_required
+def api_flashcards():
+    notes = request.json.get('notes', '')
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."},
+                {"role": "user", "content": notes}
+            ],
+            temperature=0.7,
+            max_tokens=700
+        )
+        text = response.choices[0].message.content.strip()
+        flashcards = json.loads(text) if text else {}
+    except Exception:
+        flashcards = {}
+    return jsonify(flashcards)
+
+@app.route('/api/questions', methods=['POST'])
+@login_required
+@trial_required
+def api_questions():
+    notes = request.json.get('notes', '')
+    prompt = f"Generate 20 concise questions from these notes:\n\n{notes}"
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=500
+    )
+    text = response.choices[0].message.content.strip()
+    questions = [q.strip() for q in text.split('\n') if q.strip()]
+    return jsonify(questions)
+
+@app.route('/api/grade_question', methods=['POST'])
+@login_required
+@trial_required
+def api_grade_question():
+    data = request.json
+    question = data.get('question', '')
+    answer = data.get('answer', '')
+    note_id = data.get('note_id')  # Add this to track which note the question is from
+    
+    prompt = (
+        f"Grade this answer: '{answer}' for the question: '{question}'. "
+        "Reply EXACTLY in this format:\n"
+        "score: <number from 0 to 10>\n"
+        "improvement: <suggestion>\n"
+        "model answer: <model answer>"
+    )
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=200
+        )
+        
+        text = response.choices[0].message.content.strip()
+        score_match = re.search(r'score:\s*([0-9]+(?:\.[0-9]+)?)', text, re.IGNORECASE)
+        improvement_match = re.search(r'improvement:\s*(.*?)(?:\nmodel answer:|$)', text, re.IGNORECASE | re.DOTALL)
+        model_answer_match = re.search(r'model answer:\s*(.*)', text, re.IGNORECASE | re.DOTALL)
+        
+        score = float(score_match.group(1)) if score_match else 0.0
+        improvement = improvement_match.group(1).strip() if improvement_match else "No suggestion."
+        model_answer = model_answer_match.group(1).strip() if model_answer_match else "No model answer provided."
+        
+        # Save question attempt for performance analysis
+        question_attempt = QuestionAttempt(
+            user_id=current_user.id,
+            note_id=note_id,
+            question=question,
+            user_answer=answer,
+            score=score,
+            feedback=improvement,
+            model_answer=model_answer
+        )
+        db.session.add(question_attempt)
+        db.session.commit()
+        
+        return jsonify({
+            "grade_score": str(score),
+            "improvement": improvement,
+            "model_answer": model_answer
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/summarise', methods=['POST'])
+@login_required
+@trial_required
+def api_summarise():
+    notes = request.json.get('notes', '')
+    prompt = f"Summarize these notes into a concise set of dotpoints, with emojis as graphics. Seperate each dot-point with 1 line. Make the overall set of study notes look good with emojis:\n\n{notes}"
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=400
+    )
+    summary = response.choices[0].message.content.strip()
+    return jsonify({"summary": summary})
+
+@app.route("/api/pastpaper", methods=["POST"])
+@login_required
+@trial_required
+def api_pastpaper():
+    data = request.get_json()
+    notes = data.get("notes", "")
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. If it is math or science related, provide 10 mcq questions, 20 calcualtion/shortanswer questions , and one extremely challenging problem. If it is something like Humanities or English, provide 20 MCQs, 10 short answers, and 1 extended response at the end. At the end, provide an answer key. Also, make the entire paper look good, it should look almost identical to a typical exam with space for writing answers and working out. "}
+        ]
+    )
+    past_paper = response.choices[0].message.content
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    for line in past_paper.split("\n"):
+        pdf.multi_cell(0, 10, line)
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
+
+@app.route("/api/tutor_chat", methods=["POST"])
+@login_required
+@trial_required
+def tutor_chat():
+    message = request.json.get("message", "").strip()
+    note_content = request.json.get("note_content", "").strip()
+
+    if not message:
+        return jsonify({"error": "Empty message"}), 400
+
+    if "tutor_chat_history" not in session:
+        session["tutor_chat_history"] = [
+            {"role": "system", "content": "You are a helpful AI study tutor. Always explain clearly."},
+            {"role": "system", "content": f"Here are the user's study notes:\n{note_content}"}
+        ]
+
+    session["tutor_chat_history"].append({"role": "user", "content": message})
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=session["tutor_chat_history"],
+            temperature=0.7,
+            max_tokens=500
+        )
+        reply = response.choices[0].message.content.strip()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    session["tutor_chat_history"].append({"role": "assistant", "content": reply})
+    session.modified = True
+
+    return jsonify({"reply": reply})
+# Add this new API route to your app.py file
+
+@app.route('/api/generate-flashcards', methods=['POST'])
+@login_required
+@trial_required
+def api_generate_flashcards():
+    """Generate flashcards from note content and save to database"""
+    data = request.json
+    note_content = data.get('note_content', '')
+    note_id = data.get('note_id')
+    
+    if not note_content.strip():
+        return jsonify({'error': 'No note content provided'}), 400
+    
+    try:
+        # Generate flashcards using AI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a helpful AI that creates educational flashcards. Generate 8-12 high-quality flashcards from the provided notes. Focus on key concepts, definitions, important facts, and relationships. Output ONLY a valid JSON object where keys are terms/questions and values are definitions/answers. Do not include any other text or formatting."
+                },
+                {
+                    "role": "user", 
+                    "content": f"Create flashcards from these notes:\n\n{note_content}"
+                }
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        
+        text = response.choices[0].message.content.strip()
+        
+        # Try to extract JSON from the response
+        try:
+            # Look for JSON in the response
+            start_idx = text.find('{')
+            end_idx = text.rfind('}') + 1
+            if start_idx != -1 and end_idx != -1:
+                json_str = text[start_idx:end_idx]
+                flashcards_data = json.loads(json_str)
+            else:
+                flashcards_data = json.loads(text)
+        except json.JSONDecodeError:
+            # If JSON parsing fails, create a fallback
+            return jsonify({'error': 'Failed to generate valid flashcards format'}), 500
+        
+        if not flashcards_data:
+            return jsonify({'error': 'No flashcards were generated'}), 500
+        
+        # Delete existing flashcards for this note (if any)
+        if note_id:
+            Flashcard.query.filter(
+                Flashcard.user_id == current_user.id,
+                Flashcard.note_id == note_id
+            ).delete()
+        
+        # Save new flashcards to database
+        saved_cards = []
+        for term, definition in flashcards_data.items():
+            if term.strip() and definition.strip():  # Ensure both term and definition exist
+                card = Flashcard(
+                    user_id=current_user.id,
+                    note_id=note_id,
+                    term=str(term).strip(),
+                    definition=str(definition).strip(),
+                    next_review=datetime.utcnow()  # Available immediately for new cards
+                )
+                db.session.add(card)
+                saved_cards.append({
+                    'term': card.term,
+                    'definition': card.definition
+                })
+        
+        db.session.commit()
+        
+        if not saved_cards:
+            return jsonify({'error': 'No valid flashcards could be created'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully generated {len(saved_cards)} flashcards!',
+            'flashcards': saved_cards,
+            'count': len(saved_cards)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error generating flashcards: {str(e)}")  # For debugging
+        return jsonify({'error': f'Failed to generate flashcards: {str(e)}'}), 500
 
 # Add these new models to your app.py file
 
@@ -1039,7 +1590,7 @@ class PerformanceAnalyzer:
         
         db.session.commit()
         return performance
-
+    
 # Add this Learning Plan Generator to your app.py
 
 class LearningPlanGenerator:
@@ -1381,67 +1932,6 @@ class LearningPlanGenerator:
             print(f"Error generating module quiz: {str(e)}")
             return {'success': False, 'error': str(e)}
 
-# Add these API routes to your app.py
-
-# First, update the existing grade_question route to save question attempts
-@app.route('/api/grade_question', methods=['POST'])
-@login_required
-@trial_required
-def api_grade_question():
-    data = request.json
-    question = data.get('question', '')
-    answer = data.get('answer', '')
-    note_id = data.get('note_id')  # Add this to track which note the question is from
-    
-    prompt = (
-        f"Grade this answer: '{answer}' for the question: '{question}'. "
-        "Reply EXACTLY in this format:\n"
-        "score: <number from 0 to 10>\n"
-        "improvement: <suggestion>\n"
-        "model answer: <model answer>"
-    )
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=200
-        )
-        
-        text = response.choices[0].message.content.strip()
-        score_match = re.search(r'score:\s*([0-9]+(?:\.[0-9]+)?)', text, re.IGNORECASE)
-        improvement_match = re.search(r'improvement:\s*(.*?)(?:\nmodel answer:|$)', text, re.IGNORECASE | re.DOTALL)
-        model_answer_match = re.search(r'model answer:\s*(.*)', text, re.IGNORECASE | re.DOTALL)
-        
-        score = float(score_match.group(1)) if score_match else 0.0
-        improvement = improvement_match.group(1).strip() if improvement_match else "No suggestion."
-        model_answer = model_answer_match.group(1).strip() if model_answer_match else "No model answer provided."
-        
-        # Save question attempt for performance analysis
-        question_attempt = QuestionAttempt(
-            user_id=current_user.id,
-            note_id=note_id,
-            question=question,
-            user_answer=answer,
-            score=score,
-            feedback=improvement,
-            model_answer=model_answer
-        )
-        db.session.add(question_attempt)
-        db.session.commit()
-        
-        return jsonify({
-            "grade_score": str(score),
-            "improvement": improvement,
-            "model_answer": model_answer
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-# Performance analysis API
 @app.route('/api/analyze-performance/<int:note_id>', methods=['POST'])
 @login_required
 @trial_required
@@ -1799,48 +2289,7 @@ def api_archive_learning_plan(plan_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-# Add this route to your app.py for the learning plan UI
-
-@app.route('/learning-plan')
-@app.route('/learning-plan/<int:plan_id>')
-@login_required
-@trial_required
-def learning_plan_ui(plan_id=None):
-    """Learning plan interface"""
-    if plan_id:
-        # Viewing specific learning plan
-        plan = LearningPlan.query.filter_by(
-            id=plan_id,
-            user_id=current_user.id
-        ).first()
-        
-        if not plan:
-            flash('Learning plan not found.', 'error')
-            return redirect(url_for('dashboard'))
-        
-        return render_template('learning_plan.html', 
-                             plan=plan, 
-                             user=current_user)
-    else:
-        # Learning plan dashboard
-        plans = LearningPlan.query.filter_by(
-            user_id=current_user.id,
-            is_active=True
-        ).order_by(LearningPlan.created_at.desc()).all()
-        
-        return render_template('learning_plan_dashboard.html', 
-                             plans=plans, 
-                             user=current_user)
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
-
-
-
 
 
