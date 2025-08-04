@@ -545,42 +545,81 @@ def my_notes():
     notes = Note.query.filter_by(user_id=current_user.id).all()
     return render_template('my_notes.html', notes=notes)
 
-# --- OPENAI API ROUTES ---
-@app.route('/flashcards/<int:note_id>')
+@app.route("/flashcards")
 @login_required
-def flashcards(note_id):
-    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
-    if not note:
-        flash("Note not found.", "error")
-        return redirect(url_for('dashboard'))
-    return render_template('flashcards.html', note_id=note.id, note_title=note.title, note_content=note.content)
+def flashcards_menu():
+    return render_template("flashcards.html")
 
-@app.route('/api/flashcards', methods=['POST'])
+@app.route("/flashcards/all")
+@login_required
+def flashcards_all():
+    cards = Flashcard.query.filter_by(user_id=current_user.id).order_by(Flashcard.created_at.desc()).all()
+    return render_template("flashcards_all.html", flashcards=cards)
+
+@app.route("/flashcards/review")
+@login_required
+def flashcards_review():
+    now = datetime.utcnow()
+    due_cards = Flashcard.query.filter(
+        Flashcard.user_id == current_user.id,
+        Flashcard.next_review <= now,
+        Flashcard.box < 6
+    ).all()
+    return render_template("flashcards_review.html", flashcards=due_cards)
+
+@app.route("/flashcards/generate", methods=["POST"])
 @login_required
 def api_flashcards():
-    note_id = request.json.get('note_id')
-    if not note_id:
-        return jsonify({})
-    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
-    if not note:
-        return jsonify({})
-    
+    notes = request.json.get("notes", "")
+    if not notes.strip():
+        return jsonify({"error": "Notes cannot be empty"}), 400
     try:
+        prompt = "Generate 10 flashcards from these notes in JSON format: {\"term\": \"definition\"}. Notes:\n" + notes
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."},
-                {"role": "user", "content": note.content}
-            ],
-            temperature=0.7,
-            max_tokens=700
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=700,
+            temperature=0.7
         )
-        text = response.choices[0].message.content.strip()
-        flashcards = json.loads(text) if text else {}
+        data = response.choices[0].message.content.strip()
+        flashcards = json.loads(data)
+        for term, definition in flashcards.items():
+            new_card = Flashcard(
+                user_id=current_user.id,
+                term=term,
+                definition=definition,
+                box=1,
+                next_review=datetime.utcnow()
+            )
+            db.session.add(new_card)
+        db.session.commit()
+        return jsonify({"message": "Flashcards generated successfully", "count": len(flashcards)})
     except Exception as e:
-        print("Error generating flashcards:", e)
-        flashcards = {}
-    return jsonify(flashcards)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/flashcards/grade/<int:card_id>", methods=["POST"])
+@login_required
+def grade_flashcard(card_id):
+    data = request.json
+    action = data.get("action")
+    card = Flashcard.query.filter_by(id=card_id, user_id=current_user.id).first()
+    if not card:
+        return jsonify({"error": "Card not found"}), 404
+
+    intervals = [10, 60, 1440, 4320, 10080]  # in minutes: 10m,1h,1d,3d,7d
+    if action == "again":
+        card.box = 1
+    elif action == "hard":
+        card.box = max(1, card.box)
+    elif action == "good":
+        card.box = min(5, card.box + 1)
+    elif action == "easy":
+        card.box = min(5, card.box + 2)
+
+    card.next_review = datetime.utcnow() + timedelta(minutes=intervals[card.box - 1])
+    db.session.commit()
+    return jsonify({"message": "Card updated", "next_review": card.next_review.isoformat()})
+
 
 
 @app.route('/api/questions', methods=['POST'])
@@ -705,4 +744,5 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
