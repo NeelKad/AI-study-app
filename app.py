@@ -103,6 +103,14 @@ class StudyScheduleItem(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    else:
+        return redirect(url_for('login'))
+
+
 @app.before_request
 def create_tables():
     db.create_all()
@@ -347,3 +355,4 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
