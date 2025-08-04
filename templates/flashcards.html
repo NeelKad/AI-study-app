@@ -957,6 +957,12 @@
      function setupEventListeners() {
       const optionCards = document.querySelectorAll('.option-card');
       const qualityButtons = document.querySelectorAll('.quality-btn');
+      const flashcard = document.querySelector('.flashcard'); // Define flashcard element
+      const sessionComplete = document.getElementById('sessionComplete');
+      const startScreen = document.getElementById('startScreen');
+      const studySession = document.getElementById('studySession');
+      const optionCards = document.querySelectorAll('.option-card');
+      const qualityButtons = document.querySelectorAll('.quality-btn');
 
   // Session type selection + start session on single click
       optionCards.forEach(card => {
@@ -1292,4 +1298,5 @@
     </script>
   </body>
 </html>
+
 
