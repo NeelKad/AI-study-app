@@ -1,336 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flashcards - AI Study App</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards Menu</title>
   <style>
-    :root {
-      --bg-primary: #0f0f23;
-      --bg-secondary: #1a1a3a;
-      --bg-tertiary: #252547;
-      --bg-border: #3a3a5c;
-      --text-primary: #e2e8f0;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
-      --accent: #6366f1;
-      --success: #10b981;
-      --error: #ef4444;
-      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    }
-
     body {
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      background: #0f0f23;
+      color: #e2e8f0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       margin: 0;
-      min-height: 100vh;
     }
-
     .navbar {
-      background: var(--bg-secondary);
+      background: #1a1a3a;
       padding: 1rem 2rem;
-      border-bottom: 1px solid var(--bg-border);
+      border-bottom: 1px solid #3a3a5c;
     }
-
     .nav-logo {
       font-size: 1.25rem;
       font-weight: 700;
-      color: var(--accent);
+      color: #6366f1;
       text-decoration: none;
     }
-
-    .nav-logo:hover {
-      color: var(--text-primary);
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      text-align: center;
     }
-
+    h1 {
+      color: #6366f1;
+      margin-bottom: 2rem;
+    }
     .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
       padding: 0.75rem 1.5rem;
-      font-size: 0.875rem;
+      font-size: 1rem;
       font-weight: 600;
-      text-decoration: none;
+      color: #fff;
+      background: #6366f1;
+      border: none;
       border-radius: 0.5rem;
-      border: 1px solid transparent;
       cursor: pointer;
-      transition: all 0.2s ease;
-      background: var(--accent);
-      color: white;
+      text-decoration: none;
+      margin: 0.5rem 0;
+      transition: background 0.2s ease;
     }
-
     .button:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+      background: #4f46e5;
     }
-
     .button-secondary {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      border-color: var(--bg-border);
+      background: #252547;
     }
-
-    .button-secondary:hover {
-      background: var(--bg-border);
+    textarea {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      background: #1a1a3a;
+      color: #e2e8f0;
+      border: 1px solid #3a3a5c;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
     }
-
-    .card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--bg-border);
-      border-radius: 0.75rem;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s ease;
-    }
-
-    .card:hover {
-      box-shadow: var(--shadow-md);
-    }
-
-    #flashcard:hover {
-      border-color: var(--accent);
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-2px);
-    }
-
-    #flashcard.flipped {
-      background: var(--bg-tertiary);
-      border-color: var(--success);
-    }
-
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--bg-border);
-      border-top: 2px solid var(--accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: var(--bg-tertiary);
-      color: var(--text-muted);
-      border-color: var(--bg-border);
-    }
-
-    .button:disabled:hover {
-      transform: none;
-      box-shadow: none;
-    }
-
-    #cardCounter {
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    @media (max-width: 768px) {
-      main { padding: 1rem; }
-      #flashcard {
-        padding: 2rem 1.5rem;
-        min-height: 200px;
-        font-size: 1.125rem;
-      }
-      .button {
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-      }
+    #statusMsg {
+      color: #94a3b8;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
 <body>
 <header>
   <nav class="navbar">
-    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1200px;margin:0 auto;">
-      <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-      <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding:0.5rem 1rem;font-size:0.8125rem;">← Dashboard</a>
-    </div>
+    <a href="{{ url_for('dashboard') }}" class="nav-logo">AI Study App</a>
   </nav>
 </header>
-
-<main style="padding:2rem;max-width:1000px;margin:0 auto;">
-  <div style="margin-bottom:2rem;text-align:center;">
-    <h1 style="margin-bottom:0.5rem;color:var(--accent);">{{ note_title }} - Flashcards</h1>
-    <p style="color:var(--text-secondary);font-size:1rem;">Click to flip card. Grade difficulty below.</p>
-  </div>
-
-  <div id="loadingIndicator" style="display:none;text-align:center;margin:2rem 0;">
-    <div style="display:inline-flex;align-items:center;gap:0.75rem;padding:1rem 1.5rem;background:var(--bg-secondary);border-radius:0.75rem;border:1px solid var(--bg-border);">
-      <div class="spinner"></div>
-      <span style="color:var(--text-secondary);font-weight:500;">Loading flashcards...</span>
-    </div>
-  </div>
-
-  <div style="margin-bottom:2rem;">
-    <div id="flashcard" class="card" style="
-      cursor:pointer;padding:3rem 2rem;min-height:250px;
-      display:flex;align-items:center;justify-content:center;text-align:center;
-      font-size:1.25rem;line-height:1.5;transition:all 0.2s ease;user-select:none;
-      border:2px solid transparent;">
-      Loading...
-    </div>
-  </div>
-
-  <div style="display:flex;justify-content:center;gap:1rem;margin-bottom:1rem;">
-    <button id="prevBtn" class="button button-secondary" disabled>← Previous</button>
-    <button id="nextBtn" class="button button-secondary" disabled>Next →</button>
-  </div>
-
-  <div style="display:flex;justify-content:center;gap:0.75rem;margin-bottom:2rem;">
-    <button id="againBtn" class="button button-secondary">Again</button>
-    <button id="hardBtn" class="button button-secondary">Hard</button>
-    <button id="goodBtn" class="button">Good</button>
-    <button id="easyBtn" class="button" style="background:#10b981;">Easy</button>
-  </div>
-
-  <div id="cardCounter" style="text-align:center;"></div>
+<main>
+  <h1>Flashcards</h1>
+  <a href="{{ url_for('flashcards_review') }}" class="button">Review Today's Flashcards</a><br>
+  <a href="{{ url_for('flashcards_all') }}" class="button button-secondary">View All Flashcards</a>
+  <form id="generateForm" style="margin-top: 2rem;">
+    <textarea id="notesInput" placeholder="Paste your notes here..." rows="6"></textarea>
+    <button type="submit" class="button">Generate New Flashcards</button>
+  </form>
+  <p id="statusMsg"></p>
 </main>
 
 <script>
-const noteId = {{ note_id }};
-const flashcardDiv = document.getElementById("flashcard");
-const prevBtn = document.getElementById("prevBtn");
-const nextBtn = document.getElementById("nextBtn");
-const loadingIndicator = document.getElementById("loadingIndicator");
-const cardCounter = document.getElementById("cardCounter");
-
-const againBtn = document.getElementById("againBtn");
-const hardBtn = document.getElementById("hardBtn");
-const goodBtn = document.getElementById("goodBtn");
-const easyBtn = document.getElementById("easyBtn");
-
-let flashcards = [];
-let currentIndex = 0;
-let showingDefinition = false;
-
-const intervals = [60000, 600000, 3600000, 86400000, 259200000]; // 1m,10m,1h,1d,3d
-
-function showLoading() { loadingIndicator.style.display = "block"; }
-function hideLoading() { loadingIndicator.style.display = "none"; }
-
-function updateCardCounter() {
-  if (flashcards.length > 0) {
-    cardCounter.textContent = `Card ${currentIndex + 1} of ${flashcards.length}`;
-  } else {
-    cardCounter.textContent = "";
-  }
-}
-
-function updateFlashcard() {
-  if (flashcards.length === 0) {
-    flashcardDiv.textContent = "No flashcards found.";
-    return;
-  }
-  const card = flashcards[currentIndex];
-  flashcardDiv.textContent = showingDefinition ? card.definition : card.term;
-  flashcardDiv.classList.toggle("flipped", showingDefinition);
-  prevBtn.disabled = currentIndex === 0;
-  nextBtn.disabled = currentIndex === flashcards.length - 1;
-  updateCardCounter();
-}
-
-function getDueCards() {
-  const now = Date.now();
-  return flashcards.filter(c => c.nextReview <= now && c.box < 6);
-}
-
-function goToNextCard() {
-  const due = getDueCards();
-  if (due.length === 0) {
-    flashcardDiv.textContent = "🎉 All cards reviewed for now!";
-    return;
-  }
-  currentIndex = flashcards.indexOf(due[0]);
-  showingDefinition = false;
-  updateFlashcard();
-}
-
-function applyGrade(card, action) {
-  switch(action) {
-    case "again":
-      card.box = 1;
-      card.nextReview = Date.now() + intervals[0];
-      break;
-    case "hard":
-      card.nextReview = Date.now() + intervals[Math.max(card.box-1,0)];
-      break;
-    case "good":
-      if (card.box < 5) card.box++;
-      card.nextReview = Date.now() + intervals[card.box-1];
-      break;
-    case "easy":
-      card.box = Math.min(card.box+2, 5);
-      card.nextReview = Date.now() + intervals[card.box-1];
-      break;
-  }
-  saveProgress();
-  goToNextCard();
-}
-
-againBtn.onclick = () => applyGrade(flashcards[currentIndex], "again");
-hardBtn.onclick = () => applyGrade(flashcards[currentIndex], "hard");
-goodBtn.onclick = () => applyGrade(flashcards[currentIndex], "good");
-easyBtn.onclick = () => applyGrade(flashcards[currentIndex], "easy");
-
-function saveProgress() {
-  sessionStorage.setItem(`flashcards_${noteId}`, JSON.stringify(flashcards));
-}
-
-function loadProgress() {
-  const saved = sessionStorage.getItem(`flashcards_${noteId}`);
-  if (saved) {
-    flashcards = JSON.parse(saved);
-    return true;
-  }
-  return false;
-}
-
-flashcardDiv.addEventListener("click", () => {
-  if (flashcards.length > 0) {
-    showingDefinition = !showingDefinition;
-    updateFlashcard();
-  }
-});
-
-prevBtn.onclick = () => { if (currentIndex > 0) { currentIndex--; showingDefinition = false; updateFlashcard(); } };
-nextBtn.onclick = () => { if (currentIndex < flashcards.length - 1) { currentIndex++; showingDefinition = false; updateFlashcard(); } };
-
-async function loadFlashcards() {
-  showLoading();
-  flashcardDiv.textContent = "Loading flashcards...";
+document.getElementById("generateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const notes = document.getElementById("notesInput").value;
+  const statusMsg = document.getElementById("statusMsg");
+  statusMsg.textContent = "Generating flashcards...";
   try {
-    const res = await fetch("/api/flashcards", {
+    const res = await fetch("/flashcards/generate", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ note_id: noteId })
+      body: JSON.stringify({notes})
     });
     const data = await res.json();
-    hideLoading();
-    flashcards = Object.entries(data).map(([term, definition]) => ({
-      term, definition, box: 1, nextReview: Date.now()
-    }));
-    if (loadProgress()) {
-      goToNextCard();
+    if (res.ok) {
+      statusMsg.textContent = `✅ ${data.count} flashcards added!`;
     } else {
-      saveProgress();
-      goToNextCard();
+      statusMsg.textContent = `❌ Error: ${data.error}`;
     }
   } catch (err) {
-    hideLoading();
-    flashcardDiv.textContent = `Error: ${err.message}`;
+    statusMsg.textContent = `❌ ${err.message}`;
   }
-}
-
-window.onload = loadFlashcards;
+});
 </script>
 </body>
 </html>
