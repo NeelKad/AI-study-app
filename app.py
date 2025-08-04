@@ -71,7 +71,7 @@ from flask import send_from_directory
 from flask import render_template
 
 @app.route('/')
-def home():
+def index():
     return render_template('dashboard.html')
 
 
@@ -1834,6 +1834,7 @@ def learning_plan_ui(plan_id=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
