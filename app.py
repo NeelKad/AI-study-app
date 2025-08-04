@@ -72,7 +72,7 @@ from flask import render_template
 
 @app.route('/')
 def home():
-    return render_template('login.html')
+    return render_template('dashboard')
 
 
 
@@ -1834,6 +1834,7 @@ def learning_plan_ui(plan_id=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
