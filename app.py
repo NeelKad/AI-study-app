@@ -1220,8 +1220,109 @@ def api_generate_flashcards():
         db.session.rollback()
         print(f"Error generating flashcards: {str(e)}")  # For debugging
         return jsonify({'error': f'Failed to generate flashcards: {str(e)}'}), 500
+# Update the flashcard_stats route in app.py to support note-specific queries:
+
+@app.route('/api/flashcard-stats', methods=['GET'])
+@login_required
+@trial_required
+def flashcard_stats():
+    """Get comprehensive flashcard statistics"""
+    user_id = current_user.id
+    note_id = request.args.get('note_id')  # Optional parameter for note-specific stats
+    
+    # Base query
+    base_query = Flashcard.query.filter_by(user_id=user_id)
+    
+    # Filter by note if specified
+    if note_id:
+        base_query = base_query.filter_by(note_id=note_id)
+    
+    # Basic counts
+    total_cards = base_query.count()
+    
+    # Due cards (considering note filter)
+    due_cards_query = base_query.filter(Flashcard.next_review <= datetime.utcnow())
+    due_cards = due_cards_query.count()
+    
+    # Cards by state (considering note filter)
+    state_counts = db.session.query(
+        Flashcard.state,
+        db.func.count(Flashcard.id)
+    ).filter_by(user_id=user_id)
+    
+    if note_id:
+        state_counts = state_counts.filter_by(note_id=note_id)
+    
+    state_counts = state_counts.group_by(Flashcard.state).all()
+    
+    # Daily stats (always global, not note-specific)
+    daily_stats = SpacedRepetitionEngine.get_daily_stats(user_id)
+    
+    # If note-specific, adjust new cards count
+    if note_id:
+        new_cards_for_note = base_query.filter_by(state='new').count()
+        daily_stats['new_cards'] = new_cards_for_note
+    
+    # Recent review performance (considering note filter)
+    recent_reviews_query = db.session.query(
+        db.func.avg(CardReview.quality),
+        db.func.count(CardReview.id)
+    ).join(Flashcard).filter(
+        Flashcard.user_id == user_id,
+        CardReview.reviewed_at >= datetime.utcnow() - timedelta(days=7)
+    )
+    
+    if note_id:
+        recent_reviews_query = recent_reviews_query.filter(Flashcard.note_id == note_id)
+    
+    recent_reviews = recent_reviews_query.first()
+    
+    # Learning curve data (last 30 days) - always global for now
+    learning_curve = []
+    for i in range(30):
+        date = datetime.utcnow().date() - timedelta(days=29-i)
+        reviews_query = CardReview.query.filter(
+            CardReview.user_id == user_id,
+            CardReview.reviewed_at >= date,
+            CardReview.reviewed_at < date + timedelta(days=1)
+        )
+        
+        # If note-specific, join with flashcards table
+        if note_id:
+            reviews_query = reviews_query.join(Flashcard).filter(Flashcard.note_id == note_id)
+        
+        reviews = reviews_query.count()
+        learning_curve.append({
+            'date': date.isoformat(),
+            'reviews': reviews
+        })
+    
+    response_data = {
+        'total_cards': total_cards,
+        'due_cards': due_cards,
+        'daily_stats': daily_stats,
+        'state_distribution': dict(state_counts),
+        'recent_performance': {
+            'avg_quality': float(recent_reviews[0]) if recent_reviews[0] else 0,
+            'review_count': recent_reviews[1] if recent_reviews[1] else 0
+        },
+        'learning_curve': learning_curve
+    }
+    
+    # Add note-specific context
+    if note_id:
+        note = Note.query.filter_by(id=note_id, user_id=user_id).first()
+        if note:
+            response_data['note_context'] = {
+                'note_id': note_id,
+                'note_title': note.title,
+                'is_note_specific': True
+            }
+    
+    return jsonify(response_data)
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
