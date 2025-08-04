@@ -886,6 +886,30 @@
         reviews: [],
         showingAnswer: false
       };
+      async function generateFlashcards() {
+      try {
+        showLoading('Generating new flashcards...');
+        const response = await fetch('/api/generate-flashcards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ noteId: noteId })  // send noteId if needed
+        });
+
+        const data = await response.json();
+        hideLoading();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to generate flashcards');
+        }
+
+        alert('Flashcards generated successfully!');
+        await loadStats(); // Refresh stats after generation
+      } catch (error) {
+        hideLoading();
+        alert('Error generating flashcards: ' + error.message);
+      }
+    }
+
 
       let appStats = {
         dueCards: 0,
@@ -1298,5 +1322,6 @@
     </script>
   </body>
 </html>
+
 
 
