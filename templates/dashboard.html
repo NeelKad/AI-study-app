@@ -24,487 +24,17 @@
         --error: #ef4444;
         --warning: #f59e0b;
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+          0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+          0 4px 6px -4px rgb(0 0 0 / 0.1);
       }
 
       body {
         background: var(--bg-primary);
         color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        margin: 0;
-        min-height: 100vh;
-      }
-
-      /* Navigation */
-      .navbar {
-        background: var(--bg-secondary);
-        padding: 1rem 2rem;
-        border-bottom: 1px solid var(--bg-border);
-      }
-
-      .nav-logo {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--accent);
-        text-decoration: none;
-      }
-
-      .nav-logo:hover {
-        color: var(--text-primary);
-      }
-
-      /* Buttons */
-      .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-decoration: none;
-        border-radius: 0.5rem;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: var(--accent);
-        color: white;
-        border: none;
-      }
-
-      .button:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-      }
-
-      .button-secondary {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--bg-border);
-      }
-
-      .button-secondary:hover {
-        background: var(--bg-border);
-      }
-
-      .button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-
-      /* Cards */
-      .card {
-        background: var(--bg-secondary);
-        border: 1px solid var(--bg-border);
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s ease;
-      }
-
-      .card:hover {
-        box-shadow: var(--shadow-md);
-      }
-
-      /* Notes grid */
-      .notes-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-      }
-
-      .note-card-container {
-        position: relative;
-        background: var(--bg-secondary);
-        border: 1px solid var(--bg-border);
-        border-radius: 0.75rem;
-        overflow: hidden;
-        transition: all 0.2s ease;
-      }
-
-      .note-card-container:hover {
-        box-shadow: var(--shadow-md);
-        transform: translateY(-2px);
-      }
-
-      .note-card {
-        min-height: 200px;
-        display: flex;
-        flex-direction: column;
-        padding: 1.5rem;
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      .note-card:hover h3 {
-        color: var(--accent);
-      }
-
-      .delete-note-btn {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--text-muted);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        padding: 0.5rem;
-        border-radius: 0.375rem;
-        cursor: pointer;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-        opacity: 0;
-        transform: scale(0.8);
-        z-index: 10;
-      }
-
-      .note-card-container:hover .delete-note-btn {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-      .delete-note-btn:hover {
-        background: rgba(239, 68, 68, 0.2);
-        color: var(--error);
-        border-color: rgba(239, 68, 68, 0.4);
-        transform: scale(1.05);
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Navigation Header -->
-    <header>
-      <nav class="navbar">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
-          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-          <div style="display: flex; gap: 1rem; align-items: center;">
-            <span style="color: var(--text-secondary); font-size: 0.875rem;">{{ email }}</span>
-            <a href="{{ url_for('logout') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
-              Logout
-            </a>
-          </div>
-        </div>
-      </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
-      <!-- Trial Status Banner -->
-      {% if not user.has_unlimited_access %}
-      <div id="trialBanner" style="
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
-        border: 2px solid rgba(245, 158, 11, 0.4);
-        border-radius: 1rem;
-        padding: 1.5rem 2rem;
-        margin-bottom: 2rem;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-      ">
-        <div style="position: relative; z-index: 1;">
-          {% if user.is_trial_expired() %}
-            <h3 style="color: #ef4444; margin: 0 0 0.5rem 0; font-size: 1.25rem;">⏰ Trial Expired</h3>
-            <p style="color: #fca5a5; margin: 0; font-weight: 600;">
-              Your 10-minute trial has ended. Contact admin for unlimited access!
-            </p>
-          {% else %}
-            <h3 style="color: #f59e0b; margin: 0 0 0.5rem 0; font-size: 1.25rem;">⏱️ Trial Active</h3>
-            <p style="color: #fcd34d; margin: 0 0 1rem 0; font-weight: 600;">
-              You're in trial mode! Time remaining: <span id="timeRemaining" style="font-weight: 800;">{{ user.get_time_remaining() }}</span>
-            </p>
-            <div style="background: rgba(245, 158, 11, 0.3); height: 4px; border-radius: 2px; overflow: hidden;">
-              <div id="progressBar" style="background: #f59e0b; height: 100%; border-radius: 2px; transition: width 1s ease;"></div>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-      {% else %}
-      <div style="
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));
-        border: 2px solid rgba(16, 185, 129, 0.4);
-        border-radius: 1rem;
-        padding: 1.5rem 2rem;
-        margin-bottom: 2rem;
-        text-align: center;
-      ">
-        <h3 style="color: #10b981; margin: 0 0 0.5rem 0; font-size: 1.25rem;">🚀 Unlimited Access</h3>
-        <p style="color: #6ee7b7; margin: 0; font-weight: 600;">
-          You have unlimited access to all features!
-        </p>
-      </div>
-      {% endif %}
-
-      <!-- Welcome Section -->
-      <div style="margin-bottom: 3rem;">
-        <h1 style="margin-bottom: 0.5rem;">Welcome back</h1>
-        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
-          Ready to continue your learning journey?
-        </p>
-      </div>
-
-      <!-- Study Schedule Section -->
-      <div style="margin-bottom: 3rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-            🗓️ Your Study Schedule
-          </h2>
-          <div style="display: flex; gap: 0.75rem;">
-            <button id="generateScheduleBtn" class="button" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-              ✨ Generate AI Schedule
-            </button>
-            <button id="addCustomItemBtn" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-              ➕ Add Item
-            </button>
-          </div>
-        </div>
-
-        <!-- Schedule Items Container -->
-        <div id="scheduleContainer" class="card" style="padding: 1.5rem; min-height: 200px;">
-          {% if schedule_items %}
-            <div id="scheduleList" style="display: flex; flex-direction: column; gap: 1rem;">
-              {% for item in schedule_items %}
-              <div class="schedule-item {% if item.completed %}completed{% endif %}" data-item-id="{{ item.id }}" style="
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-                padding: 1rem;
-                background: {% if item.completed %}var(--bg-tertiary){% else %}var(--bg-secondary){% endif %};
-                border: 1px solid var(--bg-border);
-                border-radius: 0.75rem;
-                transition: all 0.2s ease;
-                {% if item.completed %}opacity: 0.7;{% endif %}
-              ">
-                <input 
-                  type="checkbox" 
-                  class="complete-checkbox"
-                  {% if item.completed %}checked{% endif %}
-                  style="width: 20px; height: 20px; cursor: pointer;"
-                >
-                <div style="flex-grow: 1;">
-                  <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                    <h4 style="margin: 0; font-size: 1rem; font-weight: 600; {% if item.completed %}text-decoration: line-through; color: var(--text-muted);{% endif %}">
-                      {{ item.title }}
-                    </h4>
-                    <span class="priority-badge priority-{{ item.priority }}">
-                      {{ item.priority.title() }}
-                    </span>
-                    <span style="color: var(--text-muted); font-size: 0.875rem;">
-                      {{ item.estimated_time }}min
-                    </span>
-                  </div>
-                  <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; {% if item.completed %}text-decoration: line-through;{% endif %}">
-                    {{ item.description }}
-                  </p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  {% if item.note_id %}
-                  <button class="study-action-btn" data-action="{{ item.study_action }}" data-note-id="{{ item.note_id }}">
-                    {{ item.study_action.title() }}
-                  </button>
-                  {% endif %}
-                  <button class="delete-schedule-btn" title="Delete item">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div id="emptySchedule" style="text-align: center; padding: 2rem;">
-              <div style="width: 60px; height: 60px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem;">
-                📅
-              </div>
-              <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600;">No study schedule yet</h3>
-              <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary);">
-                Let AI create a personalized study schedule based on your notes, or add your own items.
-              </p>
-              <button onclick="generateSchedule()" class="button" style="padding: 0.75rem 1.5rem;">
-                ✨ Generate AI Study Schedule
-              </button>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div style="margin-bottom: 3rem;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-          <a href="{{ url_for('enter_notes') }}" class="card" style="text-decoration: none; color: inherit; padding: 1.5rem;">
-            <div style="display: flex; items-center: center; gap: 1rem; margin-bottom: 1rem;">
-              <div style="width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                ✏️
-              </div>
-              <div>
-                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600;">Create New Note</h3>
-                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">Add study materials</p>
-              </div>
-            </div>
-          </a>
-          
-          <div class="card" style="padding: 1.5rem;">
-            <div style="display: flex; items-center: center; gap: 1rem; margin-bottom: 1rem;">
-              <div style="width: 48px; height: 48px; background: var(--success); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                📚
-              </div>
-              <div>
-                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600;">{{ notes|length }}</h3>
-                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem;">Total Notes</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notes Section -->
-      {% if notes %}
-      <div>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">Your Notes</h2>
-          <span style="color: var(--text-secondary); font-size: 0.875rem;">{{ notes|length }} notes</span>
-        </div>
-        
-        <div class="notes-grid">
-          {% for note in notes %}
-          <div class="note-card-container" data-note-id="{{ note.id }}">
-            <a href="{{ url_for('view_note', note_id=note.id) }}" class="note-card" style="text-decoration: none; color: inherit; display: block;">
-              <div style="margin-bottom: 1rem;">
-                <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600; color: var(--text-primary); line-height: 1.3;">
-                  {{ note.title }}
-                </h3>
-                <p style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                  {{ note.content[:150] }}{% if note.content|length > 150 %}...{% endif %}
-                </p>
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--bg-border);">
-                <span style="color: var(--text-muted); font-size: 0.75rem;">
-                  {{ note.created_at.strftime('%b %d, %Y') if note.created_at else 'Recently' }}
-                </span>
-                <span style="color: var(--text-secondary); font-size: 0.75rem;">→</span>
-              </div>
-            </a>
-            <button class="delete-note-btn" data-note-id="{{ note.id }}" title="Delete note">
-              🗑️
-            </button>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      <!-- Flash Messages -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div style="position: fixed; top: 1rem; right: 1rem; z-index: 1000; max-width: 400px;">
-            {% for category, message in messages %}
-            <div style="
-              background: {% if category == 'error' %}rgba(239, 68, 68, 0.1){% else %}rgba(34, 197, 94, 0.1){% endif %};
-              color: {% if category == 'error' %}#fca5a5{% else %}#86efac{% endif %};
-              padding: 1rem 1.25rem;
-              border-radius: 0.75rem;
-              border: 1px solid {% if category == 'error' %}rgba(239, 68, 68, 0.3){% else %}rgba(34, 197, 94, 0.3){% endif %};
-              margin-bottom: 0.5rem;
-              font-weight: 500;
-              font-size: 0.875rem;
-              box-shadow: var(--shadow-lg);
-              animation: slideIn 0.3s ease-out;
-            ">
-              {{ message }}
-            </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-    </main>
-
-    <!-- Add Custom Schedule Item Modal -->
-    <div id="addItemModal">
-      <div>
-        <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600; color: var(--text-primary);">Add Custom Study Item</h3>
-        
-        <form id="addItemForm">
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Title</label>
-            <input type="text" id="itemTitle" required placeholder="Enter study task title">
-          </div>
-          
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Description</label>
-            <textarea id="itemDescription" rows="3" placeholder="Describe what you want to study"></textarea>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Study Action</label>
-              <select id="itemAction">
-                <option value="summarise">Summarise</option>
-                <option value="flashcards">Flashcards</option>
-                <option value="questions">Questions</option>
-                <option value="tutor">AI Tutor</option>
-                <option value="pastpaper">Practice Paper</option>
-              </select>
-            </div>
-            
-            <div>
-              <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Priority</label>
-              <select id="itemPriority">
-                <option value="low">Low</option>
-                <option value="medium" selected>Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-          </div>
-          
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Estimated Time (minutes)</label>
-            <input type="number" id="itemTime" value="15" min="5" max="120">
-          </div>
-          
-          <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">Related Note (Optional)</label>
-            <select id="itemNote">
-              <option value="">No specific note</option>
-              {% for note in notes %}
-              <option value="{{ note.id }}">{{ note.title }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          
-          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-            <button type="button" id="cancelAddItem" class="button button-secondary">
-              Cancel
-            </button>
-            <button type="submit" class="button">
-              Add Item
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <style>
-      /* Consistent color scheme matching other templates */
-      :root {
-        --bg-primary: #0f0f23;
-        --bg-secondary: #1a1a3a;
-        --bg-tertiary: #252547;
-        --bg-border: #3a3a5c;
-        --bg-hover: rgba(255, 255, 255, 0.05);
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --accent: #6366f1;
-        --success: #10b981;
-        --error: #ef4444;
-        --warning: #f59e0b;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-      }
-
-      body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          sans-serif;
         margin: 0;
         min-height: 100vh;
       }
@@ -688,8 +218,12 @@
       }
 
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
 
       /* Modal styling */
@@ -774,19 +308,28 @@
 
       /* Trial banner pulse animation */
       #trialBanner::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
         animation: shimmer 3s infinite;
       }
 
       @keyframes shimmer {
-        0% { left: -100%; }
-        100% { left: 100%; }
+        0% {
+          left: -100%;
+        }
+        100% {
+          left: 100%;
+        }
       }
 
       /* Responsive adjustments */
@@ -794,21 +337,21 @@
         .navbar {
           padding: 1rem;
         }
-        
+
         main {
           padding: 1rem !important;
         }
-        
+
         .schedule-item {
           flex-direction: column;
           align-items: flex-start;
           gap: 0.75rem;
         }
-        
+
         .schedule-item > div:last-child {
           align-self: flex-end;
         }
-        
+
         #addItemModal > div {
           padding: 1.5rem;
         }
@@ -816,330 +359,1889 @@
         .notes-grid {
           grid-template-columns: 1fr;
         }
+
+        #performanceCards {
+          grid-template-columns: 1fr;
+        }
+
+        .learning-plan-card .button {
+          font-size: 0.8125rem !important;
+          padding: 0.4rem 0.8rem !important;
+        }
+      }
+
+      .learning-plan-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .performance-card:hover {
+        transform: translateY(-2px);
       }
     </style>
+  </head>
+  <body>
+    <!-- Navigation Header -->
+    <header>
+      <nav class="navbar">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+          "
+        >
+          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <span style="color: var(--text-secondary); font-size: 0.875rem"
+              >{{ email }}</span
+            >
+            <a
+              href="{{ url_for('logout') }}"
+              class="button button-secondary"
+              style="padding: 0.5rem 1rem; font-size: 0.8125rem"
+            >
+              Logout
+            </a>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-    <script>
-      // DOM elements
-      const generateScheduleBtn = document.getElementById('generateScheduleBtn');
-      const addCustomItemBtn = document.getElementById('addCustomItemBtn');
-      const addItemModal = document.getElementById('addItemModal');
-      const addItemForm = document.getElementById('addItemForm');
-      const cancelAddItem = document.getElementById('cancelAddItem');
-      const scheduleContainer = document.getElementById('scheduleContainer');
-
-      // Debug: Check if elements exist
-      console.log('DOM Elements found:', {
-        generateScheduleBtn: !!generateScheduleBtn,
-        addCustomItemBtn: !!addCustomItemBtn,
-        addItemModal: !!addItemModal,
-        addItemForm: !!addItemForm,
-        cancelAddItem: !!cancelAddItem,
-        scheduleContainer: !!scheduleContainer
-      });
-
-      // Generate AI Schedule
-      async function generateSchedule() {
-        const btn = document.getElementById('generateScheduleBtn') || event.target;
-        const originalText = btn.textContent;
-        
-        try {
-          btn.disabled = true;
-          btn.innerHTML = '<span class="loading-spinner"></span>Generating...';
-          
-          const response = await fetch('/api/generate-schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to generate schedule');
-          }
-          
-          // Refresh the page to show new schedule
-          location.reload();
-          
-        } catch (error) {
-          alert('Error generating schedule: ' + error.message);
-        } finally {
-          btn.disabled = false;
-          btn.textContent = originalText;
-        }
-      }
-
-      // Event listeners
-      document.addEventListener('DOMContentLoaded', function() {
-        // Generate schedule button
-        if (generateScheduleBtn) {
-          generateScheduleBtn.addEventListener('click', generateSchedule);
-        }
-
-        // Add custom item button
-        if (addCustomItemBtn) {
-          addCustomItemBtn.addEventListener('click', function() {
-            console.log('Add item button clicked'); // Debug
-            addItemModal.style.display = 'flex';
-          });
-        }
-
-        // Cancel button
-        if (cancelAddItem) {
-          cancelAddItem.addEventListener('click', function() {
-            addItemModal.style.display = 'none';
-            addItemForm.reset();
-          });
-        }
-
-        // Close modal when clicking outside
-        if (addItemModal) {
-          addItemModal.addEventListener('click', function(e) {
-            if (e.target === addItemModal) {
-              addItemModal.style.display = 'none';
-              addItemForm.reset();
-            }
-          });
-        }
-
-        // Add custom item form submission
-        if (addItemForm) {
-          addItemForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            console.log('Form submitted'); // Debug
-            
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            
-            try {
-              submitBtn.disabled = true;
-              submitBtn.textContent = 'Adding...';
-              
-              const formData = {
-                title: document.getElementById('itemTitle').value.trim(),
-                description: document.getElementById('itemDescription').value.trim(),
-                study_action: document.getElementById('itemAction').value,
-                priority: document.getElementById('itemPriority').value,
-                estimated_time: parseInt(document.getElementById('itemTime').value),
-                note_id: document.getElementById('itemNote').value || null
-              };
-              
-              console.log('Sending data:', formData); // Debug
-              
-              if (!formData.title) {
-                throw new Error('Title is required');
-              }
-              
-              const response = await fetch('/api/add-schedule-item', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-                },
-                body: JSON.stringify(formData)
-              });
-              
-              console.log('Response status:', response.status); // Debug
-              
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                throw new Error(errorData.error || `Server error: ${response.status}`);
-              }
-              
-              const data = await response.json();
-              console.log('Success:', data); // Debug
-              
-              // Close modal and refresh
-              addItemModal.style.display = 'none';
-              addItemForm.reset();
-              
-              // Show success message
-              alert('Schedule item added successfully!');
-              
-              // Reload page to show new item
-              location.reload();
-              
-            } catch (error) {
-              console.error('Error adding item:', error); // Debug
-              alert('Error adding item: ' + error.message);
-            } finally {
-              submitBtn.disabled = false;
-              submitBtn.textContent = originalText;
-            }
-          });
-        }
-      });
-
-      // Handle schedule item interactions
-      document.addEventListener('click', async (e) => {
-        // Toggle completion
-        if (e.target.classList.contains('complete-checkbox')) {
-          const scheduleItem = e.target.closest('.schedule-item');
-          const itemId = scheduleItem.dataset.itemId;
-          
-          try {
-            const response = await fetch(`/api/toggle-schedule-item/${itemId}`, {
-              method: 'POST'
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data.completed) {
-                scheduleItem.classList.add('completed');
-              } else {
-                scheduleItem.classList.remove('completed');
-              }
-            }
-          } catch (error) {
-            console.error('Error toggling completion:', error);
-            e.target.checked = !e.target.checked; // Revert checkbox
-          }
-        }
-        
-        // Study action buttons
-        if (e.target.classList.contains('study-action-btn')) {
-          const action = e.target.dataset.action;
-          const noteId = e.target.dataset.noteId;
-          
-          if (noteId) {
-            window.location.href = `/${action}/${noteId}`;
-          } else {
-            window.location.href = `/${action}`;
-          }
-        }
-        
-        // Delete schedule item
-        if (e.target.classList.contains('delete-schedule-btn')) {
-          if (confirm('Are you sure you want to delete this schedule item?')) {
-            const scheduleItem = e.target.closest('.schedule-item');
-            const itemId = scheduleItem.dataset.itemId;
-            
-            try {
-              const response = await fetch(`/api/delete-schedule-item/${itemId}`, {
-                method: 'DELETE'
-              });
-              
-              if (response.ok) {
-                scheduleItem.remove();
-                
-                // Check if schedule is now empty
-                const remainingItems = document.querySelectorAll('.schedule-item');
-                if (remainingItems.length === 0) {
-                  location.reload(); // Refresh to show empty state
-                }
-              }
-            } catch (error) {
-              console.error('Error deleting item:', error);
-              alert('Failed to delete item');
-            }
-          }
-        }
-
-        // Delete note
-        if (e.target.classList.contains('delete-note-btn')) {
-          e.preventDefault(); // Prevent the link from being clicked
-          e.stopPropagation(); // Stop event bubbling
-          
-          const noteId = e.target.dataset.noteId;
-          const noteContainer = e.target.closest('.note-card-container');
-          const noteTitle = noteContainer.querySelector('h3').textContent;
-          
-          if (confirm(`Are you sure you want to delete the note "${noteTitle}"?\n\nThis will also remove any related schedule items.`)) {
-            const originalBtn = e.target;
-            const originalText = originalBtn.textContent;
-            
-            try {
-              originalBtn.disabled = true;
-              originalBtn.textContent = '⏳';
-              originalBtn.style.opacity = '0.5';
-              
-              const response = await fetch(`/delete-note/${noteId}`, {
-                method: 'DELETE',
-                headers: {
-                  'Accept': 'application/json'
-                }
-              });
-              
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                throw new Error(errorData.error || `Failed to delete note: ${response.status}`);
-              }
-              
-              // Animate note removal
-              noteContainer.style.transition = 'all 0.3s ease';
-              noteContainer.style.transform = 'scale(0.8)';
-              noteContainer.style.opacity = '0';
-              
-              setTimeout(() => {
-                noteContainer.remove();
-                
-                // Update notes count
-                const remainingNotes = document.querySelectorAll('.note-card-container');
-                const notesCountElement = document.querySelector('.card h3');
-                if (notesCountElement) {
-                  notesCountElement.textContent = remainingNotes.length;
-                }
-                
-                // Show empty state if no notes left
-                if (remainingNotes.length === 0) {
-                  location.reload();
-                }
-              }, 300);
-              
-            } catch (error) {
-              console.error('Error deleting note:', error);
-              alert('Error deleting note: ' + error.message);
-              
-              // Restore button state
-              originalBtn.disabled = false;
-              originalBtn.textContent = originalText;
-              originalBtn.style.opacity = '1';
-            }
-          }
-        }
-      });
-
-      // Auto-hide flash messages after 5 seconds
-      setTimeout(() => {
-        const flashMessages = document.querySelectorAll('[style*="position: fixed"]');
-        flashMessages.forEach(msg => {
-          msg.style.animation = 'slideIn 0.3s ease-out, fadeOut 0.3s ease-out 0s forwards';
-        });
-      }, 5000);
-
-      // Trial timer functionality
-      {% if not user.has_unlimited_access and not user.is_trial_expired() %}
-      function updateTrialTimer() {
-        fetch('/api/trial-status')
-          .then(response => response.json())
-          .then(data => {
-            const timeElement = document.getElementById('timeRemaining');
-            const progressBar = document.getElementById('progressBar');
-            
-            if (data.expired) {
-              window.location.href = '/trial-expired';
-              return;
-            }
-            
-            if (timeElement) {
-              timeElement.textContent = data.time_remaining;
-            }
-            
-            if (progressBar) {
-              const totalSeconds = 600;
-              const remainingSeconds = data.remaining_seconds;
-              const progressPercent = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
-              progressBar.style.width = progressPercent + '%';
-            }
-          })
-          .catch(error => {
-            console.error('Error updating trial timer:', error);
-          });
-      }
-
-      updateTrialTimer();
-      setInterval(updateTrialTimer, 10000);
+    <!-- Main Content -->
+    <main style="padding: 2rem; max-width: 1200px; margin: 0 auto">
+      <!-- Trial Status Banner -->
+      {% if not user.has_unlimited_access %}
+      <div
+        id="trialBanner"
+        style="
+          background: linear-gradient(
+            135deg,
+            rgba(245, 158, 11, 0.15),
+            rgba(217, 119, 6, 0.1)
+          );
+          border: 2px solid rgba(245, 158, 11, 0.4);
+          border-radius: 1rem;
+          padding: 1.5rem 2rem;
+          margin-bottom: 2rem;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        "
+      >
+        <div style="position: relative; z-index: 1">
+          {% if user.is_trial_expired() %}
+          <h3 style="color: #ef4444; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+            ⏰ Trial Expired
+          </h3>
+          <p style="color: #fca5a5; margin: 0; font-weight: 600">
+            Your 10-minute trial has ended. Contact admin for unlimited access!
+          </p>
+          {% else %}
+          <h3 style="color: #f59e0b; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+            ⏱️ Trial Active
+          </h3>
+          <p style="color: #fcd34d; margin: 0 0 1rem 0; font-weight: 600">
+            You're in trial mode! Time remaining:
+            <span id="timeRemaining" style="font-weight: 800"
+              >{{ user.get_time_remaining() }}</span
+            >
+          </p>
+          <div
+            style="
+              background: rgba(245, 158, 11, 0.3);
+              height: 4px;
+              border-radius: 2px;
+              overflow: hidden;
+            "
+          >
+            <div
+              id="progressBar"
+              style="
+                background: #f59e0b;
+                height: 100%;
+                border-radius: 2px;
+                transition: width 1s ease;
+              "
+            ></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div
+        style="
+          background: linear-gradient(
+            135deg,
+            rgba(16, 185, 129, 0.15),
+            rgba(5, 150, 105, 0.1)
+          );
+          border: 2px solid rgba(16, 185, 129, 0.4);
+          border-radius: 1rem;
+          padding: 1.5rem 2rem;
+          margin-bottom: 2rem;
+          text-align: center;
+        "
+      >
+        <h3 style="color: #10b981; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+          🚀 Unlimited Access
+        </h3>
+        <p style="color: #6ee7b7; margin: 0; font-weight: 600">
+          You have unlimited access to all features!
+        </p>
+      </div>
       {% endif %}
-    </script>
+
+      <!-- Welcome Section -->
+      <div style="margin-bottom: 3rem">
+        <h1 style="margin-bottom: 0.5rem">Welcome back</h1>
+        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0">
+          Ready to continue your learning journey?
+        </p>
+      </div>
+
+      <!-- Study Schedule Section -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2
+            style="
+              margin: 0;
+              font-size: 1.5rem;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            🗓️ Your Study Schedule
+          </h2>
+          <div style="display: flex; gap: 0.75rem">
+            <button
+              id="generateScheduleBtn"
+              class="button"
+              style="padding: 0.5rem 1rem; font-size: 0.875rem"
+            >
+              ✨ Generate AI Schedule
+            </button>
+            <button
+              id="addCustomItemBtn"
+              class="button button-secondary"
+              style="padding: 0.5rem 1rem; font-size: 0.875rem"
+            >
+              ➕ Add Item
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule Items Container -->
+        <div
+          id="scheduleContainer"
+          class="card"
+          style="padding: 1.5rem; min-height: 200px"
+        >
+          {% if schedule_items %}
+          <div
+            id="scheduleList"
+            style="display: flex; flex-direction: column; gap: 1rem"
+          >
+            {% for item in schedule_items %}
+            <div
+              class="schedule-item {% if item.completed %}completed{% endif %}"
+              data-item-id="{{ item.id }}"
+              style="
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                padding: 1rem;
+                background: {% if item.completed %}var(--bg-tertiary){% else %}var(--bg-secondary){% endif %};
+                border: 1px solid var(--bg-border);
+                border-radius: 0.75rem;
+                transition: all 0.2s ease;
+                {% if item.completed %}opacity: 0.7;{% endif %}
+              "
+            >
+              <input
+                type="checkbox"
+                class="complete-checkbox"
+                {%
+                if
+                item.completed
+                %}checked{%
+                endif
+                %}
+                style="width: 20px; height: 20px; cursor: pointer"
+              />
+              <div style="flex-grow: 1">
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-bottom: 0.5rem;
+                  "
+                >
+                  <h4
+                    style="margin: 0; font-size: 1rem; font-weight: 600; {% if item.completed %}text-decoration: line-through; color: var(--text-muted);{% endif %}"
+                  >
+                    {{ item.title }}
+                  </h4>
+                  <span class="priority-badge priority-{{ item.priority }}">
+                    {{ item.priority.title() }}
+                  </span>
+                  <span style="color: var(--text-muted); font-size: 0.875rem">
+                    {{ item.estimated_time }}min
+                  </span>
+                </div>
+                <p
+                  style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; {% if item.completed %}text-decoration: line-through;{% endif %}"
+                >
+                  {{ item.description }}
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                {% if item.note_id %}
+                <button
+                  class="study-action-btn"
+                  data-action="{{ item.study_action }}"
+                  data-note-id="{{ item.note_id }}"
+                >
+                  {{ item.study_action.title() }}
+                </button>
+                {% endif %}
+                <button class="delete-schedule-btn" title="Delete item">
+                  🗑️
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div id="emptySchedule" style="text-align: center; padding: 2rem">
+            <div
+              style="
+                width: 60px;
+                height: 60px;
+                background: var(--bg-tertiary);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1rem;
+                font-size: 1.5rem;
+              "
+            >
+              📅
+            </div>
+            <h3
+              style="
+                margin: 0 0 0.5rem 0;
+                font-size: 1.125rem;
+                font-weight: 600;
+              "
+            >
+              No study schedule yet
+            </h3>
+            <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary)">
+              Let AI create a personalized study schedule based on your notes,
+              or add your own items.
+            </p>
+            <button
+              onclick="generateSchedule()"
+              class="button"
+              style="padding: 0.75rem 1.5rem"
+            >
+              ✨ Generate AI Study Schedule
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+          "
+        >
+          <a
+            href="{{ url_for('enter_notes') }}"
+            class="card"
+            style="text-decoration: none; color: inherit; padding: 1.5rem"
+          >
+            <div
+              style="
+                display: flex;
+                items-center: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div
+                style="
+                  width: 48px;
+                  height: 48px;
+                  background: var(--accent);
+                  border-radius: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 1.5rem;
+                "
+              >
+                ✏️
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600">
+                  Create New Note
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                  "
+                >
+                  Add study materials
+                </p>
+              </div>
+            </div>
+          </a>
+
+          <div class="card" style="padding: 1.5rem">
+            <div
+              style="
+                display: flex;
+                items-center: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div
+                style="
+                  width: 48px;
+                  height: 48px;
+                  background: var(--success);
+                  border-radius: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 1.5rem;
+                "
+              >
+                📚
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600">
+                  {{ notes|length }}
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                  "
+                >
+                  Total Notes
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes Section -->
+      {% if notes %}
+      <div>
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600">
+            Your Notes
+          </h2>
+          <span style="color: var(--text-secondary); font-size: 0.875rem"
+            >{{ notes|length }} notes</span
+          >
+        </div>
+
+        <div class="notes-grid">
+          {% for note in notes %}
+          <div class="note-card-container" data-note-id="{{ note.id }}">
+            <a
+              href="{{ url_for('view_note', note_id=note.id) }}"
+              class="note-card"
+              style="text-decoration: none; color: inherit; display: block"
+            >
+              <div style="margin-bottom: 1rem">
+                <h3
+                  style="
+                    margin: 0 0 0.5rem 0;
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    line-height: 1.3;
+                  "
+                >
+                  {{ note.title }}
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                    line-height: 1.4;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                  "
+                >
+                  {{ note.content[:150] }}{% if note.content|length > 150
+                  %}...{% endif %}
+                </p>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  margin-top: auto;
+                  padding-top: 1rem;
+                  border-top: 1px solid var(--bg-border);
+                "
+              >
+                <span style="color: var(--text-muted); font-size: 0.75rem">
+                  {{ note.created_at.strftime('%b %d, %Y') if note.created_at
+                  else 'Recently' }}
+                </span>
+                <span style="color: var(--text-secondary); font-size: 0.75rem"
+                  >→</span
+                >
+              </div>
+            </a>
+            <button
+              class="delete-note-btn"
+              data-note-id="{{ note.id }}"
+              title="Delete note"
+            >
+              🗑️
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Personalized Learning Plans Section -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2
+            style="
+              margin: 0;
+              font-size: 1.5rem;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            🎯 Personalized Learning Plans
+          </h2>
+          <a
+            href="{{ url_for('learning_plan_ui') }}"
+            class="button button-secondary"
+            style="padding: 0.5rem 1rem; font-size: 0.875rem"
+          >
+            View All Plans
+          </a>
+        </div>
+        <div
+          id="learningPlansContainer"
+          class="card"
+          style="padding: 1.5rem; min-height: 200px"
+        >
+          <div id="learningPlansList"></div>
+          <div
+            id="emptyLearningPlans"
+            style="text-align: center; padding: 2rem; display: none"
+          >
+            <div
+              style="
+                width: 60px;
+                height: 60px;
+                background: var(--bg-tertiary);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1rem;
+                font-size: 1.5rem;
+              "
+            >
+              🎯
+            </div>
+            <h3
+              style="
+                margin: 0 0 0.5rem 0;
+                font-size: 1.125rem;
+                font-weight: 600;
+              "
+            >
+              No Learning Plans Yet
+            </h3>
+            <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary)">
+              AI will analyze your performance and create personalized learning
+              plans for areas where you need help.
+            </p>
+            <p
+              style="
+                margin: 0 0 1.5rem 0;
+                color: var(--text-muted);
+                font-size: 0.875rem;
+              "
+            >
+              Study with flashcards and answer questions to build up performance
+              data.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Analysis Cards for Notes -->
+      <div
+        style="margin-bottom: 3rem"
+        id="performanceSection"
+        style="display: none"
+      >
+        <h2 style="margin: 0 0 1.5rem 0; font-size: 1.5rem; font-weight: 600">
+          📊 Performance Analysis
+        </h2>
+        <div
+          id="performanceCards"
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+          "
+        >
+          <!-- Performance cards will be generated here -->
+        </div>
+      </div>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div
+        style="
+          position: fixed;
+          top: 1rem;
+          right: 1rem;
+          z-index: 1000;
+          max-width: 400px;
+        "
+      >
+        {% for category, message in messages %}
+        <div
+          style="
+              background: {% if category == 'error' %}rgba(239, 68, 68, 0.1){% else %}rgba(34, 197, 94, 0.1){% endif %};
+              color: {% if category == 'error' %}#fca5a5{% else %}#86efac{% endif %};
+              padding: 1rem 1.25rem;
+              border-radius: 0.75rem;
+              border: 1px solid {% if category == 'error' %}rgba(239, 68, 68, 0.3){% else %}rgba(34, 197, 94, 0.3){% endif %};
+              margin-bottom: 0.5rem;
+              font-weight: 500;
+              font-size: 0.875rem;
+              box-shadow: var(--shadow-lg);
+              animation: slideIn 0.3s ease-out;
+            "
+        >
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+    </main>
+
+    <!-- Add Custom Schedule Item Modal -->
+    <div id="addItemModal">
+      <div>
+        <h3
+          style="
+            margin: 0 0 1.5rem 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+          "
+        >
+          Add Custom Study Item
+        </h3>
+
+        <form id="addItemForm">
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Title</label
+            >
+            <input
+              type="text"
+              id="itemTitle"
+              required
+              placeholder="Enter study task title"
+            />
+          </div>
+
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Description</label
+            >
+            <textarea
+              id="itemDescription"
+              rows="3"
+              placeholder="Describe what you want to study"
+            ></textarea>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 1rem;
+              margin-bottom: 1rem;
+            "
+          >
+            <div>
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.5rem;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+                >Study Action</label
+              >
+              <select id="itemAction">
+                <option value="summarise">Summarise</option>
+                <option value="flashcards">Flashcards</option>
+                <option value="questions">Questions</option>
+                <option value="tutor">AI Tutor</option>
+                <option value="pastpaper">Practice Paper</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.5rem;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+                >Priority</label
+              >
+              <select id="itemPriority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Estimated Time (minutes)</label
+            >
+            <input type="number" id="itemTime" value="15" min="5" max="120" />
+          </div>
+
+          <div style="margin-bottom: 1.5rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Related Note (Optional)</label
+            >
+            <select id="itemNote">
+              <option value="">No specific note</option>
+              {% for note in notes %}
+              <option value="{{ note.id }}">{{ note.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 1rem; justify-content: flex-end">
+            <button
+              type="button"
+              id="cancelAddItem"
+              class="button button-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="button">Add Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <style>
+      /* Consistent color scheme matching other templates */
+      :root {
+        --bg-primary: #0f0f23;
+        --bg-secondary: #1a1a3a;
+        --bg-tertiary: #252547;
+        --bg-border: #3a3a5c;
+        --bg-hover: rgba(255, 255, 255, 0.05);
+        --text-primary: #e2e8f0;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #6366f1;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+          0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+          0 4px 6px -4px rgb(0 0 0 / 0.1);
+      }
+
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          sans-serif;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* Navigation */
+      .navbar {
+        background: var(--bg-secondary);
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .nav-logo {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .nav-logo:hover {
+        color: var(--text-primary);
+      }
+
+      /* Buttons */
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--accent);
+        color: white;
+        border: none;
+      }
+
+      .button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .button-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--bg-border);
+      }
+
+      .button-secondary:hover {
+        background: var(--bg-border);
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-md);
+      }
+
+      /* Notes grid */
+      .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .note-card {
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        padding: 1.5rem;
+      }
+
+      .note-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .note-card:hover h3 {
+        color: var(--accent);
+      }
+
+      /* Schedule item styling */
+      .schedule-item {
+        transition: all 0.2s ease;
+      }
+
+      .schedule-item:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+
+      .schedule-item.completed {
+        opacity: 0.6;
+      }
+
+      .study-action-btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .study-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .delete-schedule-btn {
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: color 0.2s ease;
+      }
+
+      .delete-schedule-btn:hover {
+        color: var(--error);
+      }
+
+      /* Priority badges */
+      .priority-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .priority-high {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.4);
+      }
+
+      .priority-medium {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.4);
+      }
+
+      .priority-low {
+        background: rgba(107, 114, 128, 0.2);
+        color: #d1d5db;
+        border: 1px solid rgba(107, 114, 128, 0.4);
+      }
+
+      /* Loading spinner */
+      .loading-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--bg-border);
+        border-top: 2px solid var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        margin-right: 0.5rem;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Modal styling */
+      #addItemModal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1001;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+
+      #addItemModal > div {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 1rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-lg);
+      }
+
+      #addItemModal input,
+      #addItemModal textarea,
+      #addItemModal select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--bg-border);
+        border-radius: 0.5rem;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      #addItemModal input:focus,
+      #addItemModal textarea:focus,
+      #addItemModal select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      #addItemModal input::placeholder,
+      #addItemModal textarea::placeholder {
+        color: var(--text-muted);
+      }
+
+      #addItemModal textarea {
+        resize: vertical;
+      }
+
+      /* Animations */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+      }
+
+      /* Trial banner pulse animation */
+      #trialBanner::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+        animation: shimmer 3s infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          left: -100%;
+        }
+        100% {
+          left: 100%;
+        }
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .navbar {
+          padding: 1rem;
+        }
+
+        main {
+          padding: 1rem !important;
+        }
+
+        .schedule-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .schedule-item > div:last-child {
+          align-self: flex-end;
+        }
+
+        #addItemModal > div {
+          padding: 1.5rem;
+        }
+
+        .notes-grid {
+          grid-template-columns: 1fr;
+        }
+
+        #performanceCards {
+          grid-template-columns: 1fr;
+        }
+
+        .learning-plan-card .button {
+          font-size: 0.8125rem !important;
+          padding: 0.4rem 0.8rem !important;
+        }
+      }
+
+      .learning-plan-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .performance-card:hover {
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation Header -->
+    <header>
+      <nav class="navbar">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+          "
+        >
+          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <span style="color: var(--text-secondary); font-size: 0.875rem"
+              >{{ email }}</span
+            >
+            <a
+              href="{{ url_for('logout') }}"
+              class="button button-secondary"
+              style="padding: 0.5rem 1rem; font-size: 0.8125rem"
+            >
+              Logout
+            </a>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main style="padding: 2rem; max-width: 1200px; margin: 0 auto">
+      <!-- Trial Status Banner -->
+      {% if not user.has_unlimited_access %}
+      <div
+        id="trialBanner"
+        style="
+          background: linear-gradient(
+            135deg,
+            rgba(245, 158, 11, 0.15),
+            rgba(217, 119, 6, 0.1)
+          );
+          border: 2px solid rgba(245, 158, 11, 0.4);
+          border-radius: 1rem;
+          padding: 1.5rem 2rem;
+          margin-bottom: 2rem;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        "
+      >
+        <div style="position: relative; z-index: 1">
+          {% if user.is_trial_expired() %}
+          <h3 style="color: #ef4444; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+            ⏰ Trial Expired
+          </h3>
+          <p style="color: #fca5a5; margin: 0; font-weight: 600">
+            Your 10-minute trial has ended. Contact admin for unlimited access!
+          </p>
+          {% else %}
+          <h3 style="color: #f59e0b; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+            ⏱️ Trial Active
+          </h3>
+          <p style="color: #fcd34d; margin: 0 0 1rem 0; font-weight: 600">
+            You're in trial mode! Time remaining:
+            <span id="timeRemaining" style="font-weight: 800"
+              >{{ user.get_time_remaining() }}</span
+            >
+          </p>
+          <div
+            style="
+              background: rgba(245, 158, 11, 0.3);
+              height: 4px;
+              border-radius: 2px;
+              overflow: hidden;
+            "
+          >
+            <div
+              id="progressBar"
+              style="
+                background: #f59e0b;
+                height: 100%;
+                border-radius: 2px;
+                transition: width 1s ease;
+              "
+            ></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div
+        style="
+          background: linear-gradient(
+            135deg,
+            rgba(16, 185, 129, 0.15),
+            rgba(5, 150, 105, 0.1)
+          );
+          border: 2px solid rgba(16, 185, 129, 0.4);
+          border-radius: 1rem;
+          padding: 1.5rem 2rem;
+          margin-bottom: 2rem;
+          text-align: center;
+        "
+      >
+        <h3 style="color: #10b981; margin: 0 0 0.5rem 0; font-size: 1.25rem">
+          🚀 Unlimited Access
+        </h3>
+        <p style="color: #6ee7b7; margin: 0; font-weight: 600">
+          You have unlimited access to all features!
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- Welcome Section -->
+      <div style="margin-bottom: 3rem">
+        <h1 style="margin-bottom: 0.5rem">Welcome back</h1>
+        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0">
+          Ready to continue your learning journey?
+        </p>
+      </div>
+
+      <!-- Study Schedule Section -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2
+            style="
+              margin: 0;
+              font-size: 1.5rem;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            🗓️ Your Study Schedule
+          </h2>
+          <div style="display: flex; gap: 0.75rem">
+            <button
+              id="generateScheduleBtn"
+              class="button"
+              style="padding: 0.5rem 1rem; font-size: 0.875rem"
+            >
+              ✨ Generate AI Schedule
+            </button>
+            <button
+              id="addCustomItemBtn"
+              class="button button-secondary"
+              style="padding: 0.5rem 1rem; font-size: 0.875rem"
+            >
+              ➕ Add Item
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule Items Container -->
+        <div
+          id="scheduleContainer"
+          class="card"
+          style="padding: 1.5rem; min-height: 200px"
+        >
+          {% if schedule_items %}
+          <div
+            id="scheduleList"
+            style="display: flex; flex-direction: column; gap: 1rem"
+          >
+            {% for item in schedule_items %}
+            <div
+              class="schedule-item {% if item.completed %}completed{% endif %}"
+              data-item-id="{{ item.id }}"
+              style="
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                padding: 1rem;
+                background: {% if item.completed %}var(--bg-tertiary){% else %}var(--bg-secondary){% endif %};
+                border: 1px solid var(--bg-border);
+                border-radius: 0.75rem;
+                transition: all 0.2s ease;
+                {% if item.completed %}opacity: 0.7;{% endif %}
+              "
+            >
+              <input
+                type="checkbox"
+                class="complete-checkbox"
+                {%
+                if
+                item.completed
+                %}checked{%
+                endif
+                %}
+                style="width: 20px; height: 20px; cursor: pointer"
+              />
+              <div style="flex-grow: 1">
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-bottom: 0.5rem;
+                  "
+                >
+                  <h4
+                    style="margin: 0; font-size: 1rem; font-weight: 600; {% if item.completed %}text-decoration: line-through; color: var(--text-muted);{% endif %}"
+                  >
+                    {{ item.title }}
+                  </h4>
+                  <span class="priority-badge priority-{{ item.priority }}">
+                    {{ item.priority.title() }}
+                  </span>
+                  <span style="color: var(--text-muted); font-size: 0.875rem">
+                    {{ item.estimated_time }}min
+                  </span>
+                </div>
+                <p
+                  style="margin: 0; color: var(--text-secondary); font-size: 0.875rem; {% if item.completed %}text-decoration: line-through;{% endif %}"
+                >
+                  {{ item.description }}
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                {% if item.note_id %}
+                <button
+                  class="study-action-btn"
+                  data-action="{{ item.study_action }}"
+                  data-note-id="{{ item.note_id }}"
+                >
+                  {{ item.study_action.title() }}
+                </button>
+                {% endif %}
+                <button class="delete-schedule-btn" title="Delete item">
+                  🗑️
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div id="emptySchedule" style="text-align: center; padding: 2rem">
+            <div
+              style="
+                width: 60px;
+                height: 60px;
+                background: var(--bg-tertiary);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1rem;
+                font-size: 1.5rem;
+              "
+            >
+              📅
+            </div>
+            <h3
+              style="
+                margin: 0 0 0.5rem 0;
+                font-size: 1.125rem;
+                font-weight: 600;
+              "
+            >
+              No study schedule yet
+            </h3>
+            <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary)">
+              Let AI create a personalized study schedule based on your notes,
+              or add your own items.
+            </p>
+            <button
+              onclick="generateSchedule()"
+              class="button"
+              style="padding: 0.75rem 1.5rem"
+            >
+              ✨ Generate AI Study Schedule
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+          "
+        >
+          <a
+            href="{{ url_for('enter_notes') }}"
+            class="card"
+            style="text-decoration: none; color: inherit; padding: 1.5rem"
+          >
+            <div
+              style="
+                display: flex;
+                items-center: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div
+                style="
+                  width: 48px;
+                  height: 48px;
+                  background: var(--accent);
+                  border-radius: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 1.5rem;
+                "
+              >
+                ✏️
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600">
+                  Create New Note
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                  "
+                >
+                  Add study materials
+                </p>
+              </div>
+            </div>
+          </a>
+
+          <div class="card" style="padding: 1.5rem">
+            <div
+              style="
+                display: flex;
+                items-center: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div
+                style="
+                  width: 48px;
+                  height: 48px;
+                  background: var(--success);
+                  border-radius: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 1.5rem;
+                "
+              >
+                📚
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 600">
+                  {{ notes|length }}
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                  "
+                >
+                  Total Notes
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes Section -->
+      {% if notes %}
+      <div>
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600">
+            Your Notes
+          </h2>
+          <span style="color: var(--text-secondary); font-size: 0.875rem"
+            >{{ notes|length }} notes</span
+          >
+        </div>
+
+        <div class="notes-grid">
+          {% for note in notes %}
+          <div class="note-card-container" data-note-id="{{ note.id }}">
+            <a
+              href="{{ url_for('view_note', note_id=note.id) }}"
+              class="note-card"
+              style="text-decoration: none; color: inherit; display: block"
+            >
+              <div style="margin-bottom: 1rem">
+                <h3
+                  style="
+                    margin: 0 0 0.5rem 0;
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    line-height: 1.3;
+                  "
+                >
+                  {{ note.title }}
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                    line-height: 1.4;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                  "
+                >
+                  {{ note.content[:150] }}{% if note.content|length > 150
+                  %}...{% endif %}
+                </p>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  margin-top: auto;
+                  padding-top: 1rem;
+                  border-top: 1px solid var(--bg-border);
+                "
+              >
+                <span style="color: var(--text-muted); font-size: 0.75rem">
+                  {{ note.created_at.strftime('%b %d, %Y') if note.created_at
+                  else 'Recently' }}
+                </span>
+                <span style="color: var(--text-secondary); font-size: 0.75rem"
+                  >→</span
+                >
+              </div>
+            </a>
+            <button
+              class="delete-note-btn"
+              data-note-id="{{ note.id }}"
+              title="Delete note"
+            >
+              🗑️
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Personalized Learning Plans Section -->
+      <div style="margin-bottom: 3rem">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h2
+            style="
+              margin: 0;
+              font-size: 1.5rem;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            🎯 Personalized Learning Plans
+          </h2>
+          <a
+            href="{{ url_for('learning_plan_ui') }}"
+            class="button button-secondary"
+            style="padding: 0.5rem 1rem; font-size: 0.875rem"
+          >
+            View All Plans
+          </a>
+        </div>
+        <div
+          id="learningPlansContainer"
+          class="card"
+          style="padding: 1.5rem; min-height: 200px"
+        >
+          <div id="learningPlansList"></div>
+          <div
+            id="emptyLearningPlans"
+            style="text-align: center; padding: 2rem; display: none"
+          >
+            <div
+              style="
+                width: 60px;
+                height: 60px;
+                background: var(--bg-tertiary);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 1rem;
+                font-size: 1.5rem;
+              "
+            >
+              🎯
+            </div>
+            <h3
+              style="
+                margin: 0 0 0.5rem 0;
+                font-size: 1.125rem;
+                font-weight: 600;
+              "
+            >
+              No Learning Plans Yet
+            </h3>
+            <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary)">
+              AI will analyze your performance and create personalized learning
+              plans for areas where you need help.
+            </p>
+            <p
+              style="
+                margin: 0 0 1.5rem 0;
+                color: var(--text-muted);
+                font-size: 0.875rem;
+              "
+            >
+              Study with flashcards and answer questions to build up performance
+              data.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Analysis Cards for Notes -->
+      <div
+        style="margin-bottom: 3rem"
+        id="performanceSection"
+        style="display: none"
+      >
+        <h2 style="margin: 0 0 1.5rem 0; font-size: 1.5rem; font-weight: 600">
+          📊 Performance Analysis
+        </h2>
+        <div
+          id="performanceCards"
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+          "
+        >
+          <!-- Performance cards will be generated here -->
+        </div>
+      </div>
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div
+        style="
+          position: fixed;
+          top: 1rem;
+          right: 1rem;
+          z-index: 1000;
+          max-width: 400px;
+        "
+      >
+        {% for category, message in messages %}
+        <div
+          style="
+              background: {% if category == 'error' %}rgba(239, 68, 68, 0.1){% else %}rgba(34, 197, 94, 0.1){% endif %};
+              color: {% if category == 'error' %}#fca5a5{% else %}#86efac{% endif %};
+              padding: 1rem 1.25rem;
+              border-radius: 0.75rem;
+              border: 1px solid {% if category == 'error' %}rgba(239, 68, 68, 0.3){% else %}rgba(34, 197, 94, 0.3){% endif %};
+              margin-bottom: 0.5rem;
+              font-weight: 500;
+              font-size: 0.875rem;
+              box-shadow: var(--shadow-lg);
+              animation: slideIn 0.3s ease-out;
+            "
+        >
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+    </main>
+
+    <!-- Add Custom Schedule Item Modal -->
+    <div id="addItemModal">
+      <div>
+        <h3
+          style="
+            margin: 0 0 1.5rem 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+          "
+        >
+          Add Custom Study Item
+        </h3>
+
+        <form id="addItemForm">
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Title</label
+            >
+            <input
+              type="text"
+              id="itemTitle"
+              required
+              placeholder="Enter study task title"
+            />
+          </div>
+
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Description</label
+            >
+            <textarea
+              id="itemDescription"
+              rows="3"
+              placeholder="Describe what you want to study"
+            ></textarea>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 1rem;
+              margin-bottom: 1rem;
+            "
+          >
+            <div>
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.5rem;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+                >Study Action</label
+              >
+              <select id="itemAction">
+                <option value="summarise">Summarise</option>
+                <option value="flashcards">Flashcards</option>
+                <option value="questions">Questions</option>
+                <option value="tutor">AI Tutor</option>
+                <option value="pastpaper">Practice Paper</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 0.5rem;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+                >Priority</label
+              >
+              <select id="itemPriority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 1rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Estimated Time (minutes)</label
+            >
+            <input type="number" id="itemTime" value="15" min="5" max="120" />
+          </div>
+
+          <div style="margin-bottom: 1.5rem">
+            <label
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text-primary);
+              "
+              >Related Note (Optional)</label
+            >
+            <select id="itemNote">
+              <option value="">No specific note</option>
+              {% for note in notes %}
+              <option value="{{ note.id }}">{{ note.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 1rem; justify-content: flex-end">
+            <button
+              type="button"
+              id="cancelAddItem"
+              class="button button-secondary"
+            >
+              Cancel
+            </button>
+            <button type="submit" class="button">Add Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </body>
 </html>
