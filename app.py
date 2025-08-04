@@ -648,7 +648,7 @@ def api_pastpaper():
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. If it is math or science related, provide 20 mcq questions, 30 calcualtion/shortanswer questions , and 2 extremely challenging problems. If it is something like Humanities or English, provide 20 MCQs, 10 short answers, and 1 extended response at the end. At the end, provide an answer key. Also, make the entire paper look good, it should look almost identical to a typical exam with space for writing answers and working out. It should have an attractive visual layout, icons and pictures, sections formated for clarity, and colours "}
+            {"role": "user", "content": f"Generate a past paper from these notes:\n{notes}. If it is math or science related, provide 20 mcq questions, 30 calcualtion/shortanswer questions , and 2 extremely challenging problems. If it is something like Humanities or English, provide 20 MCQs, 10 short answers, and 1 extended response at the end. At the end, provide an answer key. Also, make the entire paper look good, it should look almost identical to a typical exam with space for writing answers and working out. It should have sections formated for clarity"}
         ]
     )
     past_paper = response.choices[0].message.content
@@ -700,6 +700,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
