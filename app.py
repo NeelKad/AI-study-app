@@ -356,6 +356,8 @@ def api_flashcards_enhanced():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+# Replace the existing start_study_session route in app.py with this updated version:
+
 @app.route('/api/study-session/start', methods=['POST'])
 @login_required
 @trial_required
@@ -364,21 +366,85 @@ def start_study_session():
     data = request.json
     session_type = data.get('type', 'review')  # 'review', 'new', 'mixed'
     limit = min(int(data.get('limit', 20)), 50)  # Max 50 cards per session
+    note_id = data.get('note_id')  # Optional: focus on specific note
+    
+    # Base query
+    base_query = Flashcard.query.filter(Flashcard.user_id == current_user.id)
+    
+    # If note_id is provided, prioritize cards from that note
+    if note_id:
+        note_cards_query = base_query.filter(Flashcard.note_id == note_id)
+    else:
+        note_cards_query = base_query
     
     if session_type == 'new':
-        cards = Flashcard.query.filter(
-            Flashcard.user_id == current_user.id,
-            Flashcard.state == 'new'
-        ).limit(limit).all()
+        # Get new cards, prioritizing the specific note if provided
+        if note_id:
+            cards = note_cards_query.filter(Flashcard.state == 'new').limit(limit).all()
+            # If not enough cards from this note, fill with other new cards
+            if len(cards) < limit:
+                remaining_limit = limit - len(cards)
+                other_cards = base_query.filter(
+                    Flashcard.state == 'new',
+                    Flashcard.note_id != note_id
+                ).limit(remaining_limit).all()
+                cards.extend(other_cards)
+        else:
+            cards = base_query.filter(Flashcard.state == 'new').limit(limit).all()
+            
     elif session_type == 'review':
-        cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit)
+        # Get due cards for review
+        now = datetime.utcnow()
+        if note_id:
+            cards = note_cards_query.filter(Flashcard.next_review <= now).limit(limit).all()
+            # If not enough due cards from this note, fill with other due cards
+            if len(cards) < limit:
+                remaining_limit = limit - len(cards)
+                other_cards = base_query.filter(
+                    Flashcard.next_review <= now,
+                    Flashcard.note_id != note_id
+                ).limit(remaining_limit).all()
+                cards.extend(other_cards)
+        else:
+            cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit)
+            
     else:  # mixed
-        due_cards = SpacedRepetitionEngine.get_due_cards(current_user.id, limit // 2)
-        new_cards = Flashcard.query.filter(
-            Flashcard.user_id == current_user.id,
-            Flashcard.state == 'new'
-        ).limit(limit - len(due_cards)).all()
-        cards = due_cards + new_cards
+        now = datetime.utcnow()
+        half_limit = limit // 2
+        
+        if note_id:
+            # Get due cards from the specific note first
+            due_cards = note_cards_query.filter(Flashcard.next_review <= now).limit(half_limit).all()
+            # Get new cards from the specific note
+            new_cards = note_cards_query.filter(Flashcard.state == 'new').limit(limit - len(due_cards)).all()
+            
+            # Fill remaining slots with cards from other notes if needed
+            total_cards = len(due_cards) + len(new_cards)
+            if total_cards < limit:
+                remaining_limit = limit - total_cards
+                # Get additional due cards from other notes
+                if len(due_cards) < half_limit:
+                    additional_due = base_query.filter(
+                        Flashcard.next_review <= now,
+                        Flashcard.note_id != note_id
+                    ).limit(remaining_limit // 2).all()
+                    due_cards.extend(additional_due)
+                
+                # Get additional new cards from other notes
+                remaining_after_due = limit - len(due_cards) - len(new_cards)
+                if remaining_after_due > 0:
+                    additional_new = base_query.filter(
+                        Flashcard.state == 'new',
+                        Flashcard.note_id != note_id
+                    ).limit(remaining_after_due).all()
+                    new_cards.extend(additional_new)
+            
+            cards = due_cards + new_cards
+        else:
+            # Original mixed logic for all notes
+            due_cards = SpacedRepetitionEngine.get_due_cards(current_user.id, half_limit)
+            new_cards = base_query.filter(Flashcard.state == 'new').limit(limit - len(due_cards)).all()
+            cards = due_cards + new_cards
     
     # Convert to JSON
     cards_data = []
@@ -391,12 +457,15 @@ def start_study_session():
             'repetitions': card.repetitions,
             'ease_factor': card.ease_factor,
             'interval': card.interval,
-            'is_overdue': card.next_review < datetime.utcnow()
+            'is_overdue': card.next_review < datetime.utcnow(),
+            'note_id': card.note_id  # Include note_id for tracking
         })
     
     return jsonify({
         'cards': cards_data,
-        'session_stats': SpacedRepetitionEngine.get_daily_stats(current_user.id)
+        'session_stats': SpacedRepetitionEngine.get_daily_stats(current_user.id),
+        'note_specific': bool(note_id),
+        'note_id': note_id
     })
 
 @app.route('/api/review-card', methods=['POST'])
@@ -1153,6 +1222,7 @@ def api_generate_flashcards():
         return jsonify({'error': f'Failed to generate flashcards: {str(e)}'}), 500
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
