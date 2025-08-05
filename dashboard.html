@@ -3,56 +3,394 @@
   <head>
     <meta charset="UTF-8" />
     <title>Dashboard - AI Study App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
+    <style>
+      /* Minimal extra styles for new features */
+      .subjects-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .subject-folder {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #252547;
+        border: 1px solid #3a3a5c;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        color: #e2e8f0;
+      }
+      .subject-folder.active {
+        background: #6366f1;
+        color: white;
+        border-color: #6366f1;
+      }
+      .subject-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .upload-area {
+        background: #1a1a3a;
+        border: 2px dashed #3a3a5c;
+        border-radius: 1rem;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        color: #e2e8f0;
+      }
+      .upload-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .upload-tab {
+        padding: 0.5rem 1rem;
+        background: #252547;
+        border: 1px solid #3a3a5c;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        color: #e2e8f0;
+      }
+      .upload-tab.active {
+        background: #6366f1;
+        color: white;
+        border-color: #6366f1;
+      }
+      .upload-content {
+        display: none;
+      }
+      .upload-content.active {
+        display: block;
+      }
+      .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+      }
+      .note-card-container {
+        background: #252547;
+        border: 1px solid #3a3a5c;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        transition: box-shadow 0.2s, transform 0.2s;
+        position: relative;
+        cursor: pointer;
+        overflow: hidden;
+      }
+      .note-card-container:hover {
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        transform: translateY(-2px);
+      }
+      .note-card {
+        padding: 1.5rem;
+      }
+      .note-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      .note-card a {
+        color: #b27000;
+        text-decoration: none;
+      }
+      .note-card a:hover {
+        color: #6366f1;
+      }
+      .note-card p {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        margin: 0 0 1rem 0;
+      }
+      .note-actions {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+        opacity: 0;
+        transform: scale(0.8);
+        transition: all 0.2s ease;
+        z-index: 10;
+      }
+      .note-card-container:hover .note-actions {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .note-action-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: #64748b;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+      }
+      .note-action-btn.edit {
+        background: rgba(16, 185, 129, 0.1);
+        color: #64748b;
+        border-color: rgba(16, 185, 129, 0.2);
+      }
+      .note-action-btn.edit:hover {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border-color: rgba(16, 185, 129, 0.4);
+      }
+      .note-action-btn.delete {
+        background: rgba(239, 68, 68, 0.1);
+        color: #64748b;
+        border-color: rgba(239, 68, 68, 0.2);
+      }
+      .note-action-btn.delete:hover {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+      .note-source-badge {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(99, 102, 241, 0.2);
+        color: #6366f1;
+        border: 1px solid rgba(99, 102, 241, 0.4);
+      }
+      .footer {
+        width: 100%;
+        background: #1a1a3a;
+        color: #64748b;
+        text-align: center;
+        padding: 1.5rem 0;
+        border-top: 1px solid #3a3a5c;
+        margin-top: 3rem;
+        font-size: 1rem;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      }
+      @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+        .notes-grid {
+          grid-template-columns: 1fr;
+        }
+        .subjects-container {
+          flex-direction: column;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <h1>Welcome, {{ email }}</h1>
-
       <div class="nav-buttons">
-        <a href="{{ url_for('enter_notes') }}" class="button"
-          >Enter New Notes</a
-        >
-        <a
-          href="{{ url_for('logout') }}"
-          class="button"
-          style="background: #d14a4a; color: white; box-shadow: none"
-          >Logout</a
-        >
+        <a href="{{ url_for('enter_notes') }}" class="button">Enter New Notes</a>
+        <a href="{{ url_for('logout') }}" class="button" style="background: #d14a4a; color: white; box-shadow: none">Logout</a>
       </div>
-
-      {% if notes %}
-      <h2>Your Notes</h2>
-      <ul style="list-style: none; padding-left: 0">
-        {% for note in notes %}
-        <li style="margin-bottom: 12px">
-          <a
-            href="{{ url_for('view_note', note_id=note.id) }}"
-            style="
-              color: #b27000;
-              font-weight: 700;
-              text-decoration: none;
-              font-size: 1.1rem;
-            "
-          >
-            {{ note.title }}
-          </a>
-          <!-- Debug info: -->
-          <div style="font-size: 0.8rem; color: gray">
-            Debug: note.id={{ note.id }}, note.title="{{ note.title }}", note
-            object={{ note }}
+      <!-- Subjects/Folders Section -->
+      <div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+          <h2 style="margin: 0; font-size: 1.25rem; font-weight: 600;">📁 Subjects</h2>
+          <button id="addSubjectBtn" class="button" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+            ➕ Add Subject
+          </button>
+        </div>
+        <div class="subjects-container" id="subjectsContainer">
+          <div class="subject-folder active" data-subject-id="all">
+            <span class="subject-color" style="background: #6366f1;"></span>
+            <span>All Notes</span>
+            <span class="note-count" style="margin-left: 0.5rem; color: #64748b; font-size: 0.75rem;">({{ notes|length }})</span>
           </div>
-        </li>
+          {% for subject in subjects %}
+          <div class="subject-folder" data-subject-id="{{ subject.id }}">
+            <span class="subject-color" style="background: {{ subject.color }};"></span>
+            <span>{{ subject.name }}</span>
+            <span class="note-count" style="margin-left: 0.5rem; color: #64748b; font-size: 0.75rem;">({{ subject.notes|length }})</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <!-- Upload/Create Section -->
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-tabs">
+          <div class="upload-tab active" data-tab="manual">✏️ Manual</div>
+          <div class="upload-tab" data-tab="file">📄 File</div>
+          <div class="upload-tab" data-tab="website">🌐 Website</div>
+          <div class="upload-tab" data-tab="youtube">📺 YouTube</div>
+        </div>
+        <!-- Manual Entry -->
+        <div class="upload-content active" id="manual-content">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">✏️</div>
+          <h3 style="margin: 0 0 0.5rem 0;">Create Manual Note</h3>
+          <p style="color: #94a3b8; margin: 0 0 1.5rem 0;">
+            Type or paste your study content
+          </p>
+          <button onclick="openCreateNoteModal()" class="button">Create Note</button>
+        </div>
+        <!-- File Upload -->
+        <div class="upload-content" id="file-content">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
+          <h3 style="margin: 0 0 0.5rem 0;">Upload File</h3>
+          <p style="color: #94a3b8; margin: 0 0 1.5rem 0;">
+            PDF, Word Doc, or PowerPoint (Max 16MB)
+          </p>
+          <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.pptx,.ppt" style="display: none;">
+          <button onclick="document.getElementById('fileInput').click()" class="button">Choose File</button>
+        </div>
+        <!-- Website -->
+        <div class="upload-content" id="website-content">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">🌐</div>
+          <h3 style="margin: 0 0 0.5rem 0;">Import from Website</h3>
+          <p style="color: #94a3b8; margin: 0 0 1.5rem 0;">
+            Extract content from any webpage
+          </p>
+          <button onclick="openUrlModal('website')" class="button">Enter URL</button>
+        </div>
+        <!-- YouTube -->
+        <div class="upload-content" id="youtube-content">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">📺</div>
+          <h3 style="margin: 0 0 0.5rem 0;">Import from YouTube</h3>
+          <p style="color: #94a3b8; margin: 0 0 1.5rem 0;">
+            Extract transcript from YouTube videos
+          </p>
+          <button onclick="openUrlModal('youtube')" class="button">Enter URL</button>
+        </div>
+      </div>
+      <!-- Notes Section -->
+      <h2>Your Notes</h2>
+      <div class="notes-grid" id="notesGrid">
+        {% for note in notes %}
+        <div class="note-card-container" data-note-id="{{ note.id }}">
+          <div class="note-card">
+            <h3>
+              <a href="{{ url_for('view_note', note_id=note.id) }}">
+                {{ note.title }}
+              </a>
+            </h3>
+            <p>
+              {{ note.content[:120] }}{% if note.content|length > 120 %}...{% endif %}
+            </p>
+            <div style="font-size: 0.8rem; color: gray">
+              Debug: note.id={{ note.id }}, note.title="{{ note.title }}", note object={{ note }}
+            </div>
+          </div>
+          <div class="note-actions">
+            <button class="note-action-btn edit" title="Edit">✏️</button>
+            <button class="note-action-btn delete" title="Delete">🗑️</button>
+          </div>
+          <div class="note-source-badge">Manual</div>
+        </div>
         {% endfor %}
-      </ul>
-      {% else %}
-      <p style="font-weight: 600; color: #7a6b3a">
-        You don't have any notes yet. Use "Enter New Notes" to add some!
-      </p>
-      {% endif %}
+        {% if notes|length == 0 %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #64748b;">
+          <div style="font-size: 2rem; margin-bottom: 1rem;">📝</div>
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 1.125rem; font-weight: 600;">No notes yet</h3>
+          <p style="margin: 0 0 1.5rem 0; color: #94a3b8;">
+            You don't have any notes yet. Use "Enter New Notes" to add some!
+          </p>
+          <a href="{{ url_for('enter_notes') }}" class="button" style="padding: 0.75rem 1.5rem;">
+            ➕ Create Note
+          </a>
+        </div>
+        {% endif %}
+      </div>
     </div>
+    <!-- Note Modal (hidden by default) -->
+    <div class="modal" id="noteModal" style="display:none;">
+      <div class="modal-content" style="background: #1a1a3a; border: 1px solid #3a3a5c; border-radius: 1rem; padding: 2rem; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);">
+        <h2 id="modalTitle">Create/Edit Note</h2>
+        <form id="noteForm">
+          <div class="form-group">
+            <label class="form-label" for="noteTitle">Title</label>
+            <input type="text" id="noteTitle" name="title" required placeholder="Note title" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="noteContent">Content</label>
+            <textarea id="noteContent" name="content" required placeholder="Type your note here..."></textarea>
+          </div>
+          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="button" class="button button-secondary" onclick="closeNoteModal()">Cancel</button>
+            <button type="submit" class="button">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <footer class="footer">
+      &copy; 2025 AI Study Buddy &mdash; All rights reserved.
+    </footer>
+    <script>
+      // Modal logic
+      function openCreateNoteModal() {
+        document.getElementById('noteModal').style.display = 'flex';
+        document.getElementById('modalTitle').textContent = 'Create Note';
+        document.getElementById('noteTitle').value = '';
+        document.getElementById('noteContent').value = '';
+      }
+      function closeNoteModal() {
+        document.getElementById('noteModal').style.display = 'none';
+      }
+      document.getElementById('noteForm').onsubmit = function(e) {
+        e.preventDefault();
+        // TODO: AJAX save note logic here
+        closeNoteModal();
+      };
+      document.querySelectorAll('.note-action-btn.edit').forEach(btn => {
+        btn.onclick = openCreateNoteModal;
+      });
+      document.querySelectorAll('.note-action-btn.delete').forEach(btn => {
+        btn.onclick = function() {
+          // TODO: AJAX delete note logic here
+          alert('Delete note (not implemented)');
+        };
+      });
+      // Upload tab logic
+      document.querySelectorAll('.upload-tab').forEach(tab => {
+        tab.onclick = function() {
+          document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.upload-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(tab.dataset.tab + '-content').classList.add('active');
+        };
+      });
+      // Subject folder filtering (basic demo)
+      document.querySelectorAll('.subject-folder').forEach(folder => {
+        folder.onclick = function() {
+          document.querySelectorAll('.subject-folder').forEach(f => f.classList.remove('active'));
+          folder.classList.add('active');
+          // TODO: AJAX filter notes by subject
+        };
+      });
+      // Upload modal logic (demo)
+      function openUrlModal(type) {
+        alert('Open URL modal for: ' + type + ' (not implemented)');
+      }
+      document.getElementById('addSubjectBtn').onclick = function() {
+        alert('Add subject (not implemented)');
+      };
+      document.getElementById('fileInput').onchange = function() {
+        alert('File selected: ' + this.files[0].name + ' (not implemented)');
+      };
+    </script>
   </body>
 </html>
