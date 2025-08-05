@@ -617,11 +617,19 @@ def my_notes():
 @trial_required
 def api_flashcards():
     notes = request.json.get('notes', '')
+    if not notes:
+        return jsonify({"error": "No notes provided"}), 400
+
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "user", "content": "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."},
+                {
+                    "role": "user",
+                    "content": (
+                        "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."
+                    )
+                },
                 {"role": "user", "content": notes}
             ],
             temperature=0.7,
@@ -629,9 +637,36 @@ def api_flashcards():
         )
         text = response.choices[0].message.content.strip()
         flashcards = json.loads(text) if text else {}
-    except Exception:
-        flashcards = {}
+
+        # Optionally: Save flashcards to DB here
+        # Example (if note_id is passed in JSON):
+        note_id = request.json.get('note_id')
+        if note_id:
+            for term, definition in flashcards.items():
+                # Check if flashcard already exists to avoid duplicates, or clear old ones
+                existing_card = Flashcard.query.filter_by(note_id=note_id, term=term, user_id=current_user.id).first()
+                if existing_card:
+                    existing_card.definition = definition
+                else:
+                    new_card = Flashcard(
+                        note_id=note_id,
+                        term=term,
+                        definition=definition,
+                        ease_factor=2.5,
+                        interval=1,
+                        repetitions=0,
+                        due_date=datetime.utcnow().date(),
+                        last_reviewed=datetime.utcnow()
+                    )
+                    db.session.add(new_card)
+            db.session.commit()
+
+    except Exception as e:
+        app.logger.error(f"Flashcard generation failed: {e}")
+        return jsonify({"error": "Failed to generate flashcards"}), 500
+
     return jsonify(flashcards)
+
 
 @app.route('/api/questions', methods=['POST'])
 @login_required
@@ -755,6 +790,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
