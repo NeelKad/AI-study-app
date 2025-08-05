@@ -520,7 +520,13 @@ def get_due_flashcards():
     user_id = current_user.id
     today = datetime.utcnow().date()
 
-    due_flashcards = Flashcard.query.filter_by(user_id=user_id).filter(Flashcard.due_date <= today).all()
+    due_flashcards = (
+        Flashcard.query
+        .join(Note, Flashcard.note_id == Note.id)
+        .filter(Note.user_id == user_id)
+        .filter(Flashcard.due_date <= today)
+        .all()
+    )
 
     result = [{
         "id": card.id,
@@ -530,6 +536,7 @@ def get_due_flashcards():
     } for card in due_flashcards]
 
     return jsonify(result)
+
 
 
 @app.route('/api/flashcards/review/<int:card_id>', methods=['POST'])
@@ -748,6 +755,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
