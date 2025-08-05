@@ -1,5 +1,6 @@
 flask
 flask-login
+flask_sqlalchemy
 werkzeug
 fpdf
 openai
@@ -13,3 +14,13 @@ beautifulsoup4
 youtube-transcript-api
 simplejson
 gunicorn
+itsdangerous
+markupsafe
+Jinja2
+flask-wtf
+wtforms
+flask-cors
+bcrypt
+environs
+celery
+Pillow
