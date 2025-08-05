@@ -94,7 +94,7 @@ class StudyScheduleItem(db.Model):
 
 class Flashcard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=False)
+    note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=False)
     term = db.Column(db.String, nullable=False)
     definition = db.Column(db.String, nullable=False)
     ease_factor = db.Column(db.Float, default=2.5)
@@ -748,6 +748,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
