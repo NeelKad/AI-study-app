@@ -583,7 +583,7 @@ def api_flashcards():
 @trial_required
 def api_questions():
     notes = request.json.get('notes', '')
-    prompt = f"Generate 20 concise questions from these notes:\n\n{notes}"
+    prompt = f"Generate 20 concise questions from these notes:\n\n{notes}. Also, ensure that it only covers the key points of the notes"
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
@@ -629,7 +629,7 @@ def api_grade_question():
 @trial_required
 def api_summarise():
     notes = request.json.get('notes', '')
-    prompt = f"Summarize these notes into a concise set of dotpoints, with emojis as graphics:\n\n{notes}"
+    prompt = f"Summarize these notes into a concise yet elaborate paragraph"
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
@@ -700,6 +700,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
