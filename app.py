@@ -92,6 +92,18 @@ class StudyScheduleItem(db.Model):
     user = db.relationship('User', backref='schedule_items')
     note = db.relationship('Note', backref='schedule_items')
 
+class Flashcard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=False)
+    term = db.Column(db.String, nullable=False)
+    definition = db.Column(db.String, nullable=False)
+    ease_factor = db.Column(db.Float, default=2.5)
+    interval = db.Column(db.Integer, default=1)  # days
+    repetitions = db.Column(db.Integer, default=0)
+    due_date = db.Column(db.Date, default=datetime.utcnow)
+    last_reviewed = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -501,6 +513,42 @@ def flashcards(note_id=None):
             note_content = note.content
     return render_template('flashcards.html', note_content=note_content, user=current_user)
 
+@app.route('/api/flashcards/due', methods=['GET'])
+@login_required
+@trial_required
+def get_due_flashcards():
+    user_id = current_user.id
+    today = datetime.utcnow().date()
+
+    due_flashcards = Flashcard.query.filter_by(user_id=user_id).filter(Flashcard.due_date <= today).all()
+
+    result = [{
+        "id": card.id,
+        "term": card.term,
+        "definition": card.definition,
+        "due_date": card.due_date.isoformat(),
+    } for card in due_flashcards]
+
+    return jsonify(result)
+
+
+@app.route('/api/flashcards/review/<int:card_id>', methods=['POST'])
+@login_required
+@trial_required
+def review_flashcard(card_id):
+    data = request.json
+    quality = data.get('quality')  # expects 0,1,2,3
+
+    card = Flashcard.query.filter_by(id=card_id, user_id=current_user.id).first()
+    if not card:
+        return jsonify({"error": "Flashcard not found"}), 404
+
+    # Call your update_flashcard function here
+    update_flashcard(card, quality)
+
+    return jsonify({"message": "Flashcard updated"}), 200
+
+
 @app.route('/questions')
 @app.route('/questions/<int:note_id>')
 @login_required
@@ -700,6 +748,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
