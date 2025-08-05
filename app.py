@@ -1,22 +1,32 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
-from io import BytesIO
-from fpdf import FPDF
-from openai import OpenAI
-import re
-import os
-import json
-import certifi
-from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from functools import wraps
+from werkzeug.utils import secure_filename
+import PyPDF2
+import docx
+from pptx import Presentation
+import requests
+from bs4 import BeautifulSoup
+import youtube_dl
+import tempfile
 
 # SSL fix
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")
+
+# File upload config
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'pptx', 'ppt'}
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+
+# Create upload directory
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Database config
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -65,13 +75,30 @@ class User(UserMixin, db.Model):
         seconds = int(remaining.total_seconds() % 60)
         return f"{minutes}m {seconds}s"
 
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    color = db.Column(db.String(7), default='#6366f1')  # Hex color
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='subjects')
+    notes = db.relationship('Note', backref='subject', cascade='all, delete-orphan')
+
 class Note(db.Model):
     __tablename__ = 'notes'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=True)
     title = db.Column(db.String(255))
     content = db.Column(db.Text)
+    source_type = db.Column(db.String(50), default='manual')  # manual, pdf, docx, pptx, website, youtube
+    source_url = db.Column(db.String(500), nullable=True)  # For websites/youtube
+    file_path = db.Column(db.String(500), nullable=True)  # For uploaded files
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
     user = db.relationship('User', backref='notes')
 
 class StudyScheduleItem(db.Model):
@@ -100,6 +127,108 @@ def load_user(user_id):
 def create_tables():
     db.create_all()
 
+# --- HELPER FUNCTIONS ---
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_pdf(file_path):
+    """Extract text from PDF file"""
+    try:
+        with open(file_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text()
+        return text
+    except Exception as e:
+        print(f"Error extracting PDF text: {e}")
+        return ""
+
+def extract_text_from_docx(file_path):
+    """Extract text from Word document"""
+    try:
+        doc = docx.Document(file_path)
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        return text
+    except Exception as e:
+        print(f"Error extracting DOCX text: {e}")
+        return ""
+
+def extract_text_from_pptx(file_path):
+    """Extract text from PowerPoint presentation"""
+    try:
+        prs = Presentation(file_path)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text + "\n"
+        return text
+    except Exception as e:
+        print(f"Error extracting PPTX text: {e}")
+        return ""
+
+def extract_text_from_website(url):
+    """Extract text from website"""
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Get text and clean it up
+        text = soup.get_text()
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return text[:5000]  # Limit to 5000 characters
+    except Exception as e:
+        print(f"Error extracting website text: {e}")
+        return ""
+
+def extract_text_from_youtube(url):
+    """Extract transcript from YouTube video"""
+    try:
+        ydl_opts = {
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'subtitleslangs': ['en'],
+            'skip_download': True,
+        }
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ydl_opts['outtmpl'] = os.path.join(temp_dir, '%(title)s.%(ext)s')
+            
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                title = info.get('title', 'YouTube Video')
+                
+                # Try to get subtitles
+                subtitles = info.get('subtitles', {})
+                auto_captions = info.get('automatic_captions', {})
+                
+                text = f"Title: {title}\n\n"
+                
+                # Extract subtitle text if available
+                if 'en' in subtitles or 'en' in auto_captions:
+                    # This is a simplified approach - in reality, you'd need to download and parse subtitle files
+                    text += "Transcript not available through this method. Please use YouTube's built-in transcript feature."
+                else:
+                    text += "No transcript available for this video."
+                
+                return text
+    except Exception as e:
+        print(f"Error extracting YouTube text: {e}")
+        return f"Error processing YouTube video: {str(e)}"
+
 # --- DECORATOR ---
 def trial_required(f):
     @wraps(f)
@@ -111,6 +240,166 @@ def trial_required(f):
             return redirect(url_for('trial_expired'))
         return f(*args, **kwargs)
     return decorated_function
+
+# --- SUBJECT ROUTES ---
+@app.route('/api/subjects', methods=['GET'])
+@login_required
+@trial_required
+def api_get_subjects():
+    subjects = Subject.query.filter_by(user_id=current_user.id).all()
+    return jsonify([{
+        'id': s.id,
+        'name': s.name,
+        'color': s.color,
+        'note_count': len(s.notes)
+    } for s in subjects])
+
+@app.route('/api/subjects', methods=['POST'])
+@login_required
+@trial_required
+def api_create_subject():
+    data = request.json
+    subject = Subject(
+        user_id=current_user.id,
+        name=data.get('name'),
+        color=data.get('color', '#6366f1')
+    )
+    db.session.add(subject)
+    db.session.commit()
+    return jsonify({'id': subject.id, 'name': subject.name, 'color': subject.color})
+
+@app.route('/api/subjects/<int:subject_id>', methods=['PUT'])
+@login_required
+@trial_required
+def api_update_subject(subject_id):
+    subject = Subject.query.filter_by(id=subject_id, user_id=current_user.id).first()
+    if not subject:
+        return jsonify({'error': 'Subject not found'}), 404
+    
+    data = request.json
+    subject.name = data.get('name', subject.name)
+    subject.color = data.get('color', subject.color)
+    db.session.commit()
+    return jsonify({'message': 'Subject updated'})
+
+@app.route('/api/subjects/<int:subject_id>', methods=['DELETE'])
+@login_required
+@trial_required
+def api_delete_subject(subject_id):
+    subject = Subject.query.filter_by(id=subject_id, user_id=current_user.id).first()
+    if not subject:
+        return jsonify({'error': 'Subject not found'}), 404
+    
+    db.session.delete(subject)
+    db.session.commit()
+    return jsonify({'message': 'Subject deleted'})
+
+# --- FILE UPLOAD ROUTES ---
+@app.route('/api/upload', methods=['POST'])
+@login_required
+@trial_required
+def api_upload_file():
+    try:
+        data = request.form
+        title = data.get('title', '').strip()
+        subject_id = data.get('subject_id') or None
+        source_type = data.get('source_type', 'manual')
+        
+        content = ""
+        source_url = None
+        file_path = None
+        
+        if source_type == 'file' and 'file' in request.files:
+            file = request.files['file']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 
+                                       f"{current_user.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}")
+                file.save(file_path)
+                
+                # Extract text based on file type
+                ext = filename.rsplit('.', 1)[1].lower()
+                if ext == 'pdf':
+                    content = extract_text_from_pdf(file_path)
+                    source_type = 'pdf'
+                elif ext in ['docx', 'doc']:
+                    content = extract_text_from_docx(file_path)
+                    source_type = 'docx'
+                elif ext in ['pptx', 'ppt']:
+                    content = extract_text_from_pptx(file_path)
+                    source_type = 'pptx'
+                
+                if not title:
+                    title = filename.rsplit('.', 1)[0]
+        
+        elif source_type == 'website':
+            url = data.get('url', '').strip()
+            if url:
+                content = extract_text_from_website(url)
+                source_url = url
+                if not title:
+                    title = f"Website: {url[:50]}..."
+        
+        elif source_type == 'youtube':
+            url = data.get('url', '').strip()
+            if url:
+                content = extract_text_from_youtube(url)
+                source_url = url
+                if not title:
+                    title = f"YouTube: {url[:50]}..."
+        
+        elif source_type == 'manual':
+            content = data.get('content', '').strip()
+        
+        if not content.strip():
+            return jsonify({'error': 'No content could be extracted'}), 400
+        
+        if not title:
+            title = f"Untitled {source_type.title()}"
+        
+        # Create note
+        note = Note(
+            user_id=current_user.id,
+            subject_id=int(subject_id) if subject_id else None,
+            title=title,
+            content=content,
+            source_type=source_type,
+            source_url=source_url,
+            file_path=file_path
+        )
+        
+        db.session.add(note)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Note created successfully',
+            'note_id': note.id,
+            'title': note.title
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        if 'file_path' in locals() and file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        return jsonify({'error': str(e)}), 500
+
+# --- NOTE ROUTES ---
+@app.route('/api/notes/<int:note_id>', methods=['PUT'])
+@login_required
+@trial_required
+def api_update_note(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({'error': 'Note not found'}), 404
+    
+    data = request.json
+    note.title = data.get('title', note.title)
+    note.content = data.get('content', note.content)
+    note.subject_id = data.get('subject_id') or None
+    note.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    return jsonify({'message': 'Note updated successfully'})
 
 # --- AI SCHEDULE GENERATION ---
 def generate_ai_study_schedule(user_notes):
@@ -700,6 +989,7 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
