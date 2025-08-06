@@ -3,51 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Questions - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
-  <body>
-    <!-- Navigation Header -->
-    <header>
-      <nav class="navbar">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
-          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-          <div style="display: flex; gap: 1rem; align-items: center;">
-            <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
-              ← Dashboard
-            </a>
-          </div>
-        </div>
-      </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
-      <!-- Header Section -->
-      <div style="margin-bottom: 3rem; text-align: center;">
-        <h1 style="margin-bottom: 0.5rem; color: var(--accent);">Questions</h1>
-        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
-          Test your knowledge with AI-generated questions based on your notes
-        </p>
-      </div>
-
-      <!-- Loading Indicator -->
-      <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
-        <div style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: var(--bg-secondary); border-radius: 0.75rem; border: 1px solid var(--bg-border);">
-          <div class="spinner"></div>
-          <span style="color: var(--text-secondary); font-weight: 500;">Loading questions...</span>
-        </div>
-      </div>
-
-      <!-- Main Content Area -->
-      <div id="mainContent" class="card" style="padding: 2rem; min-height: 400px;">
-        <!-- Content will be populated by JavaScript -->
-      </div>
-    </main>
-
+    <title>Enhanced Questions - AI Study App</title>
     <style>
       /* Color scheme matching dashboard */
       :root {
@@ -61,6 +17,7 @@
         --accent: #6366f1;
         --success: #10b981;
         --error: #ef4444;
+        --warning: #f59e0b;
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -107,6 +64,7 @@
         transition: all 0.2s ease;
         background: var(--accent);
         color: white;
+        border: none;
       }
 
       .button:hover {
@@ -124,6 +82,12 @@
         background: var(--bg-border);
       }
 
+      .button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
       /* Cards */
       .card {
         background: var(--bg-secondary);
@@ -131,6 +95,10 @@
         border-radius: 0.75rem;
         box-shadow: var(--shadow-sm);
         transition: all 0.2s ease;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-md);
       }
 
       .spinner {
@@ -147,22 +115,179 @@
         100% { transform: rotate(360deg); }
       }
 
-      /* Question styling */
-      .question-container {
+      /* Form Controls */
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--bg-border);
+        border-radius: 0.5rem;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 1rem;
+        box-sizing: border-box;
+        transition: border-color 0.2s ease;
+      }
+
+      .form-control:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+
+      .form-control::placeholder {
+        color: var(--text-muted);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      /* Customization Panel */
+      .customization-panel {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
         margin-bottom: 2rem;
       }
 
-      .question-text {
-        font-size: 1.25rem;
+      .panel-title {
+        font-size: 1.125rem;
         font-weight: 600;
         margin-bottom: 1.5rem;
         color: var(--accent);
-        line-height: 1.5;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .toggle-panel {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        margin-left: auto;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: color 0.2s ease;
+      }
+
+      .toggle-panel:hover {
+        color: var(--text-primary);
+      }
+
+      .panel-content {
+        transition: all 0.3s ease;
+      }
+
+      .panel-content.collapsed {
+        display: none;
+      }
+
+      /* Question Types */
+      .question-type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .question-type-option {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border: 1px solid var(--bg-border);
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--bg-tertiary);
+      }
+
+      .question-type-option:hover {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .question-type-option input[type="checkbox"] {
+        margin-right: 0.5rem;
+      }
+
+      .question-type-option.selected {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.2);
+      }
+
+      /* Question Display */
+      .question-container {
+        background: var(--bg-secondary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .question-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .question-counter {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.875rem;
+      }
+
+      .question-metadata {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      .question-text {
+        font-size: 1.125rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      .question-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: rgba(99, 102, 241, 0.2);
+        color: var(--accent);
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+
+      /* Answer Input */
+      .answer-section {
+        margin-bottom: 2rem;
       }
 
       .answer-input {
         width: 100%;
-        min-height: 150px;
+        min-height: 120px;
         padding: 1rem;
         border: 2px solid var(--bg-border);
         border-radius: 0.5rem;
@@ -171,73 +296,118 @@
         font-size: 1rem;
         font-family: inherit;
         resize: vertical;
-        margin-bottom: 1rem;
         transition: border-color 0.2s ease;
+        box-sizing: border-box;
       }
 
       .answer-input:focus {
         outline: none;
         border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
       }
 
-      .answer-input::placeholder {
-        color: var(--text-muted);
+      /* Math Input Styling */
+      .math-input {
+        font-family: 'Courier New', monospace;
+        background: var(--bg-primary);
+        border: 2px dashed var(--bg-border);
       }
 
-      .grade-button {
-        background: var(--accent);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.5rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
+      .math-input:focus {
+        border-style: solid;
+      }
+
+      /* MCQ Options */
+      .mcq-options {
+        display: grid;
+        gap: 0.75rem;
         margin-bottom: 1.5rem;
       }
 
-      .grade-button:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
-      }
-
-      .grade-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-
-      .feedback-box {
-        background: var(--bg-tertiary);
+      .mcq-option {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
         border: 1px solid var(--bg-border);
         border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--bg-tertiary);
+      }
+
+      .mcq-option:hover {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .mcq-option.selected {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.2);
+      }
+
+      .mcq-option input[type="radio"] {
+        margin-right: 0.75rem;
+      }
+
+      /* Feedback Styling */
+      .feedback-container {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--bg-border);
+        border-radius: 0.75rem;
         padding: 1.5rem;
-        margin-bottom: 2rem;
+        margin-top: 1.5rem;
+      }
+
+      .feedback-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .feedback-score {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      .score-excellent { color: var(--success); }
+      .score-good { color: #22d3ee; }
+      .score-average { color: var(--warning); }
+      .score-poor { color: var(--error); }
+
+      .feedback-section {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--bg-border);
+      }
+
+      .feedback-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .feedback-title {
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+      }
+
+      .feedback-content {
+        color: var(--text-secondary);
         line-height: 1.6;
       }
 
-      .feedback-box h4 {
-        color: var(--accent);
-        margin: 0 0 0.5rem 0;
-        font-size: 1rem;
-      }
-
-      .feedback-box p {
-        margin: 0.5rem 0;
-      }
-
-      .score {
-        color: var(--success);
-        font-weight: 600;
-      }
-
-      .nav-buttons {
+      /* Navigation */
+      .question-nav {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         gap: 1rem;
         margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--bg-border);
       }
 
       .nav-button {
@@ -262,219 +432,989 @@
         cursor: not-allowed;
       }
 
-      .question-counter {
-        text-align: center;
-        color: var(--accent);
-        font-weight: 600;
-        margin-bottom: 1rem;
+      .progress-bar {
+        flex-grow: 1;
+        height: 8px;
+        background: var(--bg-border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 0 1rem;
       }
 
-      /* Responsive adjustments */
+      .progress-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+
+      /* Responsive Design */
       @media (max-width: 768px) {
         .navbar {
           padding: 1rem;
         }
         
-        main {
-          padding: 1rem;
+        .form-row {
+          grid-template-columns: 1fr;
         }
         
-        .question-text {
-          font-size: 1.125rem;
+        .question-type-grid {
+          grid-template-columns: 1fr;
         }
         
-        .nav-buttons {
+        .question-nav {
           flex-direction: column;
         }
         
-        .button, .nav-button, .grade-button {
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
+        .progress-bar {
+          margin: 1rem 0;
+          order: -1;
+        }
+        
+        .nav-button {
+          width: 100%;
         }
       }
+
+      /* Animations */
+      @keyframes slideInRight {
+        from {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .question-container {
+        animation: slideInRight 0.3s ease-out;
+      }
     </style>
+  </head>
+  <body>
+    <!-- Navigation Header -->
+    <header>
+      <nav class="navbar">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+          <a href="/" class="nav-logo">AI Study App</a>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <a href="/dashboard" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+              ← Dashboard
+            </a>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
+      <!-- Header Section -->
+      <div style="margin-bottom: 3rem; text-align: center;">
+        <h1 style="margin-bottom: 0.5rem; color: var(--accent); font-size: 2rem;">🎯 Enhanced Question Generator</h1>
+        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
+          Customizable AI-generated questions with advanced grading and STEM calculation support
+        </p>
+      </div>
+
+      <!-- Customization Panel -->
+      <div class="customization-panel" id="customizationPanel">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 class="panel-title">
+            ⚙️ Question Customization
+          </h3>
+          <button class="toggle-panel" id="togglePanel" title="Toggle customization panel">
+            ▼
+          </button>
+        </div>
+
+        <div class="panel-content" id="panelContent">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Number of Questions</label>
+              <select class="form-control" id="questionCount">
+                <option value="5">5 Questions</option>
+                <option value="10">10 Questions</option>
+                <option value="15" selected>15 Questions</option>
+                <option value="20">20 Questions</option>
+                <option value="30">30 Questions</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Difficulty Level</label>
+              <select class="form-control" id="difficulty">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate" selected>Intermediate</option>
+                <option value="advanced">Advanced</option>
+                <option value="mixed">Mixed Levels</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Subject Area</label>
+              <select class="form-control" id="subjectArea">
+                <option value="auto">Auto-detect from notes</option>
+                <option value="mathematics">Mathematics</option>
+                <option value="physics">Physics</option>
+                <option value="chemistry">Chemistry</option>
+                <option value="biology">Biology</option>
+                <option value="computer_science">Computer Science</option>
+                <option value="history">History</option>
+                <option value="literature">Literature</option>
+                <option value="general">General Studies</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Question Types</label>
+            <div class="question-type-grid" id="questionTypes">
+              <label class="question-type-option">
+                <input type="checkbox" value="multiple_choice" checked>
+                <span>Multiple Choice</span>
+              </label>
+              <label class="question-type-option">
+                <input type="checkbox" value="short_answer" checked>
+                <span>Short Answer</span>
+              </label>
+              <label class="question-type-option">
+                <input type="checkbox" value="calculation">
+                <span>Calculations</span>
+              </label>
+              <label class="question-type-option">
+                <input type="checkbox" value="true_false">
+                <span>True/False</span>
+              </label>
+              <label class="question-type-option">
+                <input type="checkbox" value="essay">
+                <span>Essay Questions</span>
+              </label>
+              <label class="question-type-option">
+                <input type="checkbox" value="definition">
+                <span>Definitions</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Focus Topics (Optional)</label>
+            <input type="text" class="form-control" id="focusTopics" placeholder="e.g., photosynthesis, quadratic equations, world war 2">
+            <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+              Comma-separated topics to emphasize in questions
+            </small>
+          </div>
+
+          <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button class="button button-secondary" id="resetCustomization">
+              Reset to Default
+            </button>
+            <button class="button" id="generateQuestions">
+              🚀 Generate Questions
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
+        <div style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1.5rem 2rem; background: var(--bg-secondary); border-radius: 0.75rem; border: 1px solid var(--bg-border);">
+          <div class="spinner"></div>
+          <span style="color: var(--text-secondary); font-weight: 500;">Generating personalized questions...</span>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div id="questionsContainer" style="display: none;">
+        <!-- Questions will be populated here -->
+      </div>
+
+      <!-- Initial State -->
+      <div id="initialState" class="card" style="padding: 3rem; text-align: center;">
+        <div style="width: 80px; height: 80px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">
+          🎯
+        </div>
+        <h3 style="margin: 0 0 1rem 0; font-size: 1.25rem; font-weight: 600;">Ready to Test Your Knowledge?</h3>
+        <p style="margin: 0 0 2rem 0; color: var(--text-secondary); max-width: 500px; margin-left: auto; margin-right: auto;">
+          Customize your learning experience with our advanced question generator. Choose difficulty levels, question types, and focus areas to create the perfect study session.
+        </p>
+        <button class="button" onclick="document.getElementById('generateQuestions').click()">
+          🚀 Start Generating Questions
+        </button>
+      </div>
+    </main>
 
     <script>
-      const mainContent = document.getElementById("mainContent");
-      const loadingIndicator = document.getElementById("loadingIndicator");
+      // Global state
+      let questionsData = [];
+      let currentQuestionIndex = 0;
+      let userAnswers = {};
+      let questionGrades = {};
+      let noteContent = '';
 
-      // Get note content from template or sessionStorage
-      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
-      
-      if (!noteContent) {
-        noteContent = sessionStorage.getItem("processedNotes");
+      // Initialize
+      document.addEventListener('DOMContentLoaded', function() {
+        // Get note content (you'll need to implement this based on your routing)
+        noteContent = sessionStorage.getItem('processedNotes') || '';
+        
+        initializeEventListeners();
+        detectSubjectArea();
+        autoSelectQuestionTypes();
+      });
+
+      function initializeEventListeners() {
+        // Panel toggle
+        document.getElementById('togglePanel').addEventListener('click', toggleCustomizationPanel);
+        
+        // Generate questions button
+        document.getElementById('generateQuestions').addEventListener('click', generateQuestions);
+        
+        // Reset customization
+        document.getElementById('resetCustomization').addEventListener('click', resetCustomization);
+        
+        // Question type selection
+        document.getElementById('questionTypes').addEventListener('change', handleQuestionTypeChange);
+        
+        // Subject area change
+        document.getElementById('subjectArea').addEventListener('change', autoSelectQuestionTypes);
       }
 
-      function showLoading() {
-        loadingIndicator.style.display = "block";
-      }
-      
-      function hideLoading() {
-        loadingIndicator.style.display = "none";
+      function toggleCustomizationPanel() {
+        const panel = document.getElementById('panelContent');
+        const toggle = document.getElementById('togglePanel');
+        
+        panel.classList.toggle('collapsed');
+        toggle.textContent = panel.classList.contains('collapsed') ? '▶' : '▼';
       }
 
-      async function loadQuestions() {
+      function detectSubjectArea() {
+        if (!noteContent) return;
+        
+        const content = noteContent.toLowerCase();
+        const subjectSelect = document.getElementById('subjectArea');
+        
+        // Simple keyword-based detection
+        if (content.includes('equation') || content.includes('formula') || content.includes('calculate')) {
+          subjectSelect.value = 'mathematics';
+        } else if (content.includes('atom') || content.includes('molecule') || content.includes('reaction')) {
+          subjectSelect.value = 'chemistry';
+        } else if (content.includes('force') || content.includes('energy') || content.includes('velocity')) {
+          subjectSelect.value = 'physics';
+        } else if (content.includes('cell') || content.includes('organism') || content.includes('DNA')) {
+          subjectSelect.value = 'biology';
+        }
+        
+        autoSelectQuestionTypes();
+      }
+
+      function autoSelectQuestionTypes() {
+        const subject = document.getElementById('subjectArea').value;
+        const checkboxes = document.querySelectorAll('#questionTypes input[type="checkbox"]');
+        
+        // Reset all
+        checkboxes.forEach(cb => cb.checked = false);
+        
+        // Auto-select based on subject
+        if (['mathematics', 'physics', 'chemistry'].includes(subject)) {
+          document.querySelector('input[value="calculation"]').checked = true;
+          document.querySelector('input[value="multiple_choice"]').checked = true;
+          document.querySelector('input[value="short_answer"]').checked = true;
+        } else if (subject === 'biology') {
+          document.querySelector('input[value="multiple_choice"]').checked = true;
+          document.querySelector('input[value="definition"]').checked = true;
+          document.querySelector('input[value="short_answer"]').checked = true;
+        } else {
+          document.querySelector('input[value="multiple_choice"]').checked = true;
+          document.querySelector('input[value="short_answer"]').checked = true;
+        }
+        
+        updateQuestionTypeUI();
+      }
+
+      function handleQuestionTypeChange() {
+        updateQuestionTypeUI();
+      }
+
+      function updateQuestionTypeUI() {
+        const options = document.querySelectorAll('.question-type-option');
+        options.forEach(option => {
+          const checkbox = option.querySelector('input[type="checkbox"]');
+          if (checkbox.checked) {
+            option.classList.add('selected');
+          } else {
+            option.classList.remove('selected');
+          }
+        });
+      }
+
+      function resetCustomization() {
+        document.getElementById('questionCount').value = '15';
+        document.getElementById('difficulty').value = 'intermediate';
+        document.getElementById('subjectArea').value = 'auto';
+        document.getElementById('focusTopics').value = '';
+        
+        // Reset question types
+        const checkboxes = document.querySelectorAll('#questionTypes input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        document.querySelector('input[value="multiple_choice"]').checked = true;
+        document.querySelector('input[value="short_answer"]').checked = true;
+        
+        updateQuestionTypeUI();
+      }
+
+      async function generateQuestions() {
         if (!noteContent) {
-          mainContent.innerHTML = "<p style='color: var(--error); text-align: center;'>No note content found! Please go back and select a note.</p>";
+          alert('No note content found! Please go back and select a note.');
           return;
         }
 
+        const customization = getCustomizationSettings();
         showLoading();
 
         try {
-          const res = await fetch("/api/questions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes: noteContent }),
+          const response = await fetch('/api/questions/enhanced', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              notes: noteContent,
+              ...customization
+            })
           });
-          
-          if (!res.ok) throw new Error("Failed to fetch questions");
-          
-          const data = await res.json();
-          hideLoading();
 
-          if (!data || data.length === 0) {
-            mainContent.innerHTML = "<p style='text-align: center; color: var(--text-secondary);'>No questions generated from your notes.</p>";
+          if (!response.ok) {
+            throw new Error('Failed to generate questions');
+          }
+
+          const data = await response.json();
+          questionsData = data.questions || [];
+          currentQuestionIndex = 0;
+          userAnswers = {};
+          questionGrades = {};
+
+          hideLoading();
+          
+          if (questionsData.length === 0) {
+            showError('No questions were generated. Please try different customization settings.');
             return;
           }
 
-          displayQuestion(data);
-        } catch (err) {
+          showQuestionsInterface();
+          displayCurrentQuestion();
+
+        } catch (error) {
           hideLoading();
-          mainContent.innerHTML = `<p style="color: var(--error); text-align: center;">Error: ${err.message}</p>`;
+          showError('Error generating questions: ' + error.message);
         }
       }
 
-      let questionsData = null;
-      let currentQuestionIndex = 0;
+      function getCustomizationSettings() {
+        const questionTypes = [];
+        document.querySelectorAll('#questionTypes input[type="checkbox"]:checked').forEach(cb => {
+          questionTypes.push(cb.value);
+        });
 
-      function displayQuestion(data) {
-        questionsData = data;
-        currentQuestionIndex = 0;
-        renderQuestion();
+        return {
+          count: parseInt(document.getElementById('questionCount').value),
+          difficulty: document.getElementById('difficulty').value,
+          subject: document.getElementById('subjectArea').value,
+          types: questionTypes,
+          focusTopics: document.getElementById('focusTopics').value.split(',').map(t => t.trim()).filter(t => t)
+        };
       }
 
-      function renderQuestion() {
-        if (!questionsData || questionsData.length === 0) {
-          mainContent.innerHTML = "<p style='text-align: center; color: var(--text-secondary);'>No questions available.</p>";
-          return;
-        }
+      function showLoading() {
+        document.getElementById('loadingIndicator').style.display = 'block';
+        document.getElementById('initialState').style.display = 'none';
+        document.getElementById('questionsContainer').style.display = 'none';
+      }
 
-        const container = document.createElement("div");
-        container.className = "question-container";
+      function hideLoading() {
+        document.getElementById('loadingIndicator').style.display = 'none';
+      }
 
-        // Question counter
-        const counter = document.createElement("div");
-        counter.className = "question-counter";
-        counter.textContent = `Question ${currentQuestionIndex + 1} of ${questionsData.length}`;
-        container.appendChild(counter);
+      function showError(message) {
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = `
+          <div class="card" style="padding: 2rem; text-align: center;">
+            <div style="color: var(--error); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+            <h3 style="color: var(--error); margin-bottom: 1rem;">Error</h3>
+            <p style="color: var(--text-secondary);">${message}</p>
+            <button class="button" onclick="location.reload()" style="margin-top: 1rem;">
+              Try Again
+            </button>
+          </div>
+        `;
+        container.style.display = 'block';
+      }
 
-        // Question text
-        const questionText = document.createElement("div");
-        questionText.className = "question-text";
-        questionText.textContent = questionsData[currentQuestionIndex];
-        container.appendChild(questionText);
+      function showQuestionsInterface() {
+        document.getElementById('initialState').style.display = 'none';
+        document.getElementById('questionsContainer').style.display = 'block';
+      }
 
-        // Answer input
-        const answerInput = document.createElement("textarea");
-        answerInput.className = "answer-input";
-        answerInput.placeholder = "Type your answer here...";
-        answerInput.id = "answerInput";
-        container.appendChild(answerInput);
+      function displayCurrentQuestion() {
+        if (!questionsData.length) return;
 
-        // Grade button
-        const gradeBtn = document.createElement("button");
-        gradeBtn.className = "grade-button";
-        gradeBtn.textContent = "Grade My Answer";
-        gradeBtn.id = "gradeBtn";
-        container.appendChild(gradeBtn);
+        const question = questionsData[currentQuestionIndex];
+        const container = document.getElementById('questionsContainer');
 
-        // Feedback area
-        const feedbackDiv = document.createElement("div");
-        feedbackDiv.className = "feedback-box";
-        feedbackDiv.id = "feedbackDiv";
-        feedbackDiv.style.display = "none";
-        container.appendChild(feedbackDiv);
+        container.innerHTML = `
+          <div class="question-container">
+            <div class="question-header">
+              <div>
+                <div class="question-counter">Question ${currentQuestionIndex + 1} of ${questionsData.length}</div>
+                <div class="question-type-badge">${question.type.replace('_', ' ').toUpperCase()}</div>
+              </div>
+              <div class="question-metadata">
+                <span>Difficulty: ${question.difficulty || 'Intermediate'}</span>
+                ${question.topic ? `<span>Topic: ${question.topic}</span>` : ''}
+              </div>
+            </div>
 
-        // Navigation buttons
-        const navDiv = document.createElement("div");
-        navDiv.className = "nav-buttons";
+            <div class="question-text">
+              ${question.question}
+            </div>
 
-        const prevBtn = document.createElement("button");
-        prevBtn.className = "nav-button";
-        prevBtn.textContent = "← Previous Question";
-        prevBtn.disabled = currentQuestionIndex === 0;
+            <div class="answer-section">
+              ${renderAnswerInput(question)}
+            </div>
 
-        const nextBtn = document.createElement("button");
-        nextBtn.className = "nav-button";
-        nextBtn.textContent = "Next Question →";
-        nextBtn.disabled = currentQuestionIndex === questionsData.length - 1;
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+              <button class="button" onclick="gradeCurrentAnswer()" id="gradeButton">
+                📊 Grade Answer
+              </button>
+              ${question.type === 'calculation' ? `
+                <button class="button button-secondary" onclick="showMathHelp()">
+                  🧮 Math Helper
+                </button>
+              ` : ''}
+            </div>
 
-        navDiv.appendChild(prevBtn);
-        navDiv.appendChild(nextBtn);
-        container.appendChild(navDiv);
+            <div id="feedbackContainer" style="display: none;">
+              <!-- Feedback will be inserted here -->
+            </div>
 
-        mainContent.innerHTML = "";
-        mainContent.appendChild(container);
+            <div class="question-nav">
+              <button class="nav-button" onclick="previousQuestion()" ${currentQuestionIndex === 0 ? 'disabled' : ''}>
+                ← Previous
+              </button>
+              
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: ${((currentQuestionIndex + 1) / questionsData.length) * 100}%"></div>
+              </div>
+              
+              <button class="nav-button" onclick="nextQuestion()" ${currentQuestionIndex === questionsData.length - 1 ? 'disabled' : ''}>
+                ${currentQuestionIndex === questionsData.length - 1 ? 'Finish' : 'Next →'}
+              </button>
+            </div>
+          </div>
 
-        // Event listeners
-        gradeBtn.onclick = async () => {
-          const userAnswer = answerInput.value.trim();
-          if (!userAnswer) {
-            feedbackDiv.innerHTML = "<p style='color: var(--error);'>Please enter an answer to grade.</p>";
-            feedbackDiv.style.display = "block";
-            return;
-          }
-          
-          gradeBtn.disabled = true;
-          gradeBtn.textContent = "Grading...";
-          feedbackDiv.innerHTML = "<p style='color: var(--text-secondary);'>Grading your answer...</p>";
-          feedbackDiv.style.display = "block";
+          ${currentQuestionIndex === questionsData.length - 1 ? renderSummaryCard() : ''}
+        `;
+      }
 
-          try {
-            const res = await fetch("/api/grade_question", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                question: questionsData[currentQuestionIndex],
-                answer: userAnswer,
-                notes: noteContent,
-              }),
-            });
-            
-            if (!res.ok) throw new Error("Grading failed.");
-            
-            const data = await res.json();
-            feedbackDiv.innerHTML = `
-              <h4>Feedback</h4>
-              <p><strong>Score:</strong> <span class="score">${data.grade_score}/10</span></p>
-              <p><strong>Improvement Suggestion:</strong><br>${data.improvement}</p>
-              <p><strong>Model Answer:</strong><br>${data.model_answer}</p>
+      function renderAnswerInput(question) {
+        switch (question.type) {
+          case 'multiple_choice':
+            return `
+              <div class="mcq-options" id="mcqOptions">
+                ${question.options.map((option, index) => `
+                  <label class="mcq-option" onclick="selectMCQOption(${index})">
+                    <input type="radio" name="mcq_answer" value="${index}" style="pointer-events: none;">
+                    <span>${option}</span>
+                  </label>
+                `).join('')}
+              </div>
             `;
-          } catch (err) {
-            feedbackDiv.innerHTML = `<p style="color: var(--error);">Error: ${err.message}</p>`;
-          } finally {
-            gradeBtn.disabled = false;
-            gradeBtn.textContent = "Grade My Answer";
-          }
-        };
 
-        prevBtn.onclick = () => {
-          if (currentQuestionIndex > 0) {
-            currentQuestionIndex--;
-            renderQuestion();
-          }
-        };
+          case 'true_false':
+            return `
+              <div class="mcq-options" id="tfOptions">
+                <label class="mcq-option" onclick="selectTFOption(true)">
+                  <input type="radio" name="tf_answer" value="true" style="pointer-events: none;">
+                  <span>True</span>
+                </label>
+                <label class="mcq-option" onclick="selectTFOption(false)">
+                  <input type="radio" name="tf_answer" value="false" style="pointer-events: none;">
+                  <span>False</span>
+                </label>
+              </div>
+            `;
 
-        nextBtn.onclick = () => {
-          if (currentQuestionIndex < questionsData.length - 1) {
-            currentQuestionIndex++;
-            renderQuestion();
-          }
-        };
+          case 'calculation':
+            return `
+              <div style="margin-bottom: 1rem;">
+                <label class="form-label">Your calculation and final answer:</label>
+                <textarea 
+                  class="answer-input math-input" 
+                  id="answerInput" 
+                  placeholder="Show your work step by step:&#10;&#10;Step 1: ...&#10;Step 2: ...&#10;&#10;Final Answer: ..."
+                  style="font-family: 'Courier New', monospace;"
+                >${userAnswers[currentQuestionIndex] || ''}</textarea>
+              </div>
+              <div style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+                💡 <strong>Math Tips:</strong> Show all steps clearly. Use * for multiplication, ^ for exponents, sqrt() for square roots.
+              </div>
+            `;
+
+          case 'essay':
+            return `
+              <div>
+                <label class="form-label">Your essay response:</label>
+                <textarea 
+                  class="answer-input" 
+                  id="answerInput" 
+                  placeholder="Write a comprehensive response addressing all parts of the question..."
+                  style="min-height: 200px;"
+                >${userAnswers[currentQuestionIndex] || ''}</textarea>
+              </div>
+            `;
+
+          default:
+            return `
+              <div>
+                <label class="form-label">Your answer:</label>
+                <textarea 
+                  class="answer-input" 
+                  id="answerInput" 
+                  placeholder="Type your answer here..."
+                >${userAnswers[currentQuestionIndex] || ''}</textarea>
+              </div>
+            `;
+        }
       }
 
-      window.onload = loadQuestions;
+      function selectMCQOption(index) {
+        const options = document.querySelectorAll('.mcq-option');
+        options.forEach((option, i) => {
+          option.classList.toggle('selected', i === index);
+          option.querySelector('input').checked = i === index;
+        });
+        userAnswers[currentQuestionIndex] = index;
+      }
+
+      function selectTFOption(value) {
+        const options = document.querySelectorAll('.mcq-option');
+        options.forEach((option) => {
+          const input = option.querySelector('input');
+          const isSelected = input.value === value.toString();
+          option.classList.toggle('selected', isSelected);
+          input.checked = isSelected;
+        });
+        userAnswers[currentQuestionIndex] = value;
+      }
+
+      function showMathHelp() {
+        alert(`Math Input Helper:
+
+Common Symbols:
+• Multiplication: * (e.g., 5 * 3)
+• Division: / (e.g., 10 / 2)
+• Exponents: ^ (e.g., 2^3 = 8)
+• Square root: sqrt() (e.g., sqrt(16) = 4)
+• Fractions: Write as division (e.g., 3/4)
+
+Example Format:
+Step 1: Given equation: 2x + 5 = 15
+Step 2: Subtract 5: 2x = 10
+Step 3: Divide by 2: x = 5
+
+Final Answer: x = 5`);
+      }
+
+      async function gradeCurrentAnswer() {
+        const question = questionsData[currentQuestionIndex];
+        let userAnswer;
+
+        // Get user answer based on question type
+        switch (question.type) {
+          case 'multiple_choice':
+            const selectedMCQ = document.querySelector('input[name="mcq_answer"]:checked');
+            if (!selectedMCQ) {
+              alert('Please select an answer before grading.');
+              return;
+            }
+            userAnswer = question.options[parseInt(selectedMCQ.value)];
+            break;
+
+          case 'true_false':
+            const selectedTF = document.querySelector('input[name="tf_answer"]:checked');
+            if (!selectedTF) {
+              alert('Please select an answer before grading.');
+              return;
+            }
+            userAnswer = selectedTF.value === 'true';
+            break;
+
+          default:
+            const answerInput = document.getElementById('answerInput');
+            if (!answerInput || !answerInput.value.trim()) {
+              alert('Please provide an answer before grading.');
+              return;
+            }
+            userAnswer = answerInput.value.trim();
+            userAnswers[currentQuestionIndex] = userAnswer;
+        }
+
+        const gradeButton = document.getElementById('gradeButton');
+        const originalText = gradeButton.textContent;
+        
+        gradeButton.disabled = true;
+        gradeButton.textContent = '🔄 Grading...';
+
+        try {
+          const response = await fetch('/api/grade_question/enhanced', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              question: question.question,
+              questionType: question.type,
+              userAnswer: userAnswer,
+              correctAnswer: question.correctAnswer || null,
+              notes: noteContent,
+              difficulty: question.difficulty,
+              rubric: question.rubric || null
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to grade question');
+          }
+
+          const gradeData = await response.json();
+          questionGrades[currentQuestionIndex] = gradeData;
+          
+          displayFeedback(gradeData);
+
+        } catch (error) {
+          alert('Error grading question: ' + error.message);
+        } finally {
+          gradeButton.disabled = false;
+          gradeButton.textContent = originalText;
+        }
+      }
+
+      function displayFeedback(gradeData) {
+        const container = document.getElementById('feedbackContainer');
+        const score = parseFloat(gradeData.score) || 0;
+        
+        let scoreClass = 'score-poor';
+        if (score >= 9) scoreClass = 'score-excellent';
+        else if (score >= 7) scoreClass = 'score-good';
+        else if (score >= 5) scoreClass = 'score-average';
+
+        container.innerHTML = `
+          <div class="feedback-container">
+            <div class="feedback-header">
+              <div class="feedback-score ${scoreClass}">
+                ${score}/10
+              </div>
+              <div>
+                <div style="font-weight: 600; color: var(--text-primary);">Grade Feedback</div>
+                <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                  ${getScoreDescription(score)}
+                </div>
+              </div>
+            </div>
+
+            ${gradeData.isCorrect !== undefined ? `
+              <div class="feedback-section">
+                <div class="feedback-title">✓ Correctness</div>
+                <div class="feedback-content" style="color: ${gradeData.isCorrect ? 'var(--success)' : 'var(--error)'};">
+                  ${gradeData.isCorrect ? 'Correct!' : 'Incorrect'}
+                </div>
+              </div>
+            ` : ''}
+
+            <div class="feedback-section">
+              <div class="feedback-title">💭 Assessment</div>
+              <div class="feedback-content">${gradeData.feedback || 'Good effort!'}</div>
+            </div>
+
+            ${gradeData.improvement ? `
+              <div class="feedback-section">
+                <div class="feedback-title">🎯 Areas for Improvement</div>
+                <div class="feedback-content">${gradeData.improvement}</div>
+              </div>
+            ` : ''}
+
+            ${gradeData.modelAnswer ? `
+              <div class="feedback-section">
+                <div class="feedback-title">📝 Model Answer</div>
+                <div class="feedback-content" style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.875rem;">
+                  ${gradeData.modelAnswer}
+                </div>
+              </div>
+            ` : ''}
+
+            ${gradeData.hints ? `
+              <div class="feedback-section">
+                <div class="feedback-title">💡 Study Tips</div>
+                <div class="feedback-content">${gradeData.hints}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      function getScoreDescription(score) {
+        if (score >= 9) return 'Excellent work! 🌟';
+        if (score >= 7) return 'Good understanding 👍';
+        if (score >= 5) return 'Needs improvement 📚';
+        return 'Requires more study 📖';
+      }
+
+      function previousQuestion() {
+        if (currentQuestionIndex > 0) {
+          currentQuestionIndex--;
+          displayCurrentQuestion();
+          
+          // Restore previous answer if exists
+          if (userAnswers[currentQuestionIndex] !== undefined) {
+            const question = questionsData[currentQuestionIndex];
+            if (question.type === 'multiple_choice') {
+              selectMCQOption(userAnswers[currentQuestionIndex]);
+            } else if (question.type === 'true_false') {
+              selectTFOption(userAnswers[currentQuestionIndex]);
+            }
+          }
+
+          // Show previous feedback if exists
+          if (questionGrades[currentQuestionIndex]) {
+            displayFeedback(questionGrades[currentQuestionIndex]);
+          }
+        }
+      }
+
+      function nextQuestion() {
+        // Save current answer if it's a text input
+        const answerInput = document.getElementById('answerInput');
+        if (answerInput) {
+          userAnswers[currentQuestionIndex] = answerInput.value;
+        }
+
+        if (currentQuestionIndex < questionsData.length - 1) {
+          currentQuestionIndex++;
+          displayCurrentQuestion();
+          
+          // Restore next answer if exists
+          if (userAnswers[currentQuestionIndex] !== undefined) {
+            const question = questionsData[currentQuestionIndex];
+            if (question.type === 'multiple_choice') {
+              selectMCQOption(userAnswers[currentQuestionIndex]);
+            } else if (question.type === 'true_false') {
+              selectTFOption(userAnswers[currentQuestionIndex]);
+            }
+          }
+
+          // Show previous feedback if exists
+          if (questionGrades[currentQuestionIndex]) {
+            displayFeedback(questionGrades[currentQuestionIndex]);
+          }
+        } else {
+          // Show final summary
+          showFinalSummary();
+        }
+      }
+
+      function renderSummaryCard() {
+        const totalQuestions = questionsData.length;
+        const gradedQuestions = Object.keys(questionGrades).length;
+        const averageScore = gradedQuestions > 0 ? 
+          (Object.values(questionGrades).reduce((sum, grade) => sum + parseFloat(grade.score || 0), 0) / gradedQuestions).toFixed(1) : 0;
+
+        return `
+          <div class="card" style="padding: 2rem; margin-top: 2rem; border: 2px solid var(--accent);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+              <h3 style="color: var(--accent); margin-bottom: 1rem;">📊 Session Summary</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                <div>
+                  <div style="font-size: 2rem; font-weight: 700; color: var(--success);">${totalQuestions}</div>
+                  <div style="color: var(--text-secondary); font-size: 0.875rem;">Total Questions</div>
+                </div>
+                <div>
+                  <div style="font-size: 2rem; font-weight: 700; color: var(--warning);">${gradedQuestions}</div>
+                  <div style="color: var(--text-secondary); font-size: 0.875rem;">Answered</div>
+                </div>
+                <div>
+                  <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">${averageScore}/10</div>
+                  <div style="color: var(--text-secondary); font-size: 0.875rem;">Average Score</div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+              <button class="button" onclick="showDetailedReport()">
+                📈 Detailed Report
+              </button>
+              <button class="button button-secondary" onclick="generateNewQuestions()">
+                🔄 New Questions
+              </button>
+              <button class="button button-secondary" onclick="window.location.href='/dashboard'">
+                🏠 Back to Dashboard
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function showFinalSummary() {
+        const container = document.getElementById('questionsContainer');
+        const totalQuestions = questionsData.length;
+        const gradedQuestions = Object.keys(questionGrades).length;
+        const totalScore = Object.values(questionGrades).reduce((sum, grade) => sum + parseFloat(grade.score || 0), 0);
+        const averageScore = gradedQuestions > 0 ? (totalScore / gradedQuestions).toFixed(1) : 0;
+        const percentage = gradedQuestions > 0 ? ((totalScore / (gradedQuestions * 10)) * 100).toFixed(1) : 0;
+
+        // Calculate performance by question type
+        const typePerformance = {};
+        questionsData.forEach((question, index) => {
+          if (questionGrades[index]) {
+            const type = question.type;
+            if (!typePerformance[type]) {
+              typePerformance[type] = { total: 0, count: 0 };
+            }
+            typePerformance[type].total += parseFloat(questionGrades[index].score || 0);
+            typePerformance[type].count += 1;
+          }
+        });
+
+        let performanceHTML = '';
+        Object.entries(typePerformance).forEach(([type, data]) => {
+          const avg = (data.total / data.count).toFixed(1);
+          performanceHTML += `
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-border);">
+              <span style="text-transform: capitalize;">${type.replace('_', ' ')}</span>
+              <span style="font-weight: 600; color: var(--accent);">${avg}/10</span>
+            </div>
+          `;
+        });
+
+        container.innerHTML = `
+          <div class="card" style="padding: 3rem; text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+            <h2 style="color: var(--accent); margin-bottom: 2rem;">Study Session Complete!</h2>
+            
+            <div style="background: var(--bg-tertiary); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+                <div>
+                  <div style="font-size: 2.5rem; font-weight: 700; color: var(--success);">${totalQuestions}</div>
+                  <div style="color: var(--text-secondary);">Questions</div>
+                </div>
+                <div>
+                  <div style="font-size: 2.5rem; font-weight: 700; color: var(--warning);">${gradedQuestions}</div>
+                  <div style="color: var(--text-secondary);">Completed</div>
+                </div>
+                <div>
+                  <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent);">${averageScore}</div>
+                  <div style="color: var(--text-secondary);">Avg Score</div>
+                </div>
+                <div>
+                  <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent);">${percentage}%</div>
+                  <div style="color: var(--text-secondary);">Overall</div>
+                </div>
+              </div>
+
+              ${performanceHTML ? `
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                  <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Performance by Type:</h4>
+                  ${performanceHTML}
+                </div>
+              ` : ''}
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+              <button class="button" onclick="reviewQuestions()">
+                🔍 Review Questions
+              </button>
+              <button class="button button-secondary" onclick="generateNewQuestions()">
+                🔄 Generate New Set
+              </button>
+              <button class="button button-secondary" onclick="window.location.href='/dashboard'">
+                🏠 Dashboard
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function reviewQuestions() {
+        currentQuestionIndex = 0;
+        displayCurrentQuestion();
+        
+        // Restore answer and feedback
+        const question = questionsData[currentQuestionIndex];
+        if (userAnswers[currentQuestionIndex] !== undefined) {
+          if (question.type === 'multiple_choice') {
+            selectMCQOption(userAnswers[currentQuestionIndex]);
+          } else if (question.type === 'true_false') {
+            selectTFOption(userAnswers[currentQuestionIndex]);
+          }
+        }
+        
+        if (questionGrades[currentQuestionIndex]) {
+          displayFeedback(questionGrades[currentQuestionIndex]);
+        }
+      }
+
+      function generateNewQuestions() {
+        // Reset state
+        questionsData = [];
+        currentQuestionIndex = 0;
+        userAnswers = {};
+        questionGrades = {};
+        
+        // Show initial state
+        document.getElementById('initialState').style.display = 'block';
+        document.getElementById('questionsContainer').style.display = 'none';
+      }
+
+      // Initialize question type UI on load
+      document.addEventListener('DOMContentLoaded', function() {
+        updateQuestionTypeUI();
+      });
+
+      // Demo data for testing without backend
+      function loadDemoQuestions() {
+        questionsData = [
+          {
+            question: "What is the derivative of x²?",
+            type: "short_answer",
+            difficulty: "intermediate",
+            topic: "Calculus",
+            correctAnswer: "2x"
+          },
+          {
+            question: "Calculate the area of a circle with radius 5 units.",
+            type: "calculation",
+            difficulty: "intermediate",
+            topic: "Geometry",
+            correctAnswer: "78.54"
+          },
+          {
+            question: "Which of the following is a prime number?",
+            type: "multiple_choice",
+            difficulty: "beginner",
+            topic: "Number Theory",
+            options: ["4", "6", "7", "8"],
+            correctAnswer: 2
+          }
+        ];
+        
+        currentQuestionIndex = 0;
+        userAnswers = {};
+        questionGrades = {};
+        
+        showQuestionsInterface();
+        displayCurrentQuestion();
+      }
+
+      // For testing - uncomment to load demo questions
+      // setTimeout(() => loadDemoQuestions(), 1000);
     </script>
   </body>
 </html>
