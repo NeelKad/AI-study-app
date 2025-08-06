@@ -682,7 +682,7 @@ def api_flashcards():
         if note_id:
             for term, definition in flashcards.items():
                 # Check if flashcard already exists to avoid duplicates, or clear old ones
-                existing_card = Flashcard.query.filter_by(note_id=note_id, term=term, user_id=current_user.id).first()
+                existing_card = Flashcard.query.filter_by(note_id=note_id, term=term).first()
                 if existing_card:
                     existing_card.definition = definition
                 else:
