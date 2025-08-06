@@ -556,12 +556,13 @@ def get_all_flashcards():
 @trial_required
 def get_due_flashcards():
     user_id = current_user.id
+    note_id = request.args.get('note_id', type=int)  # <-- add this line
     today = datetime.utcnow().date()
 
     due_flashcards = (
         Flashcard.query
         .join(Note, Flashcard.note_id == Note.id)
-        .filter(Note.user_id == user_id)
+        .filter(Note.user_id == user_id, Flashcard.note_id == note_id)  # <-- add note_id filter
         .filter(Flashcard.due_date <= today)
         .all()
     )
