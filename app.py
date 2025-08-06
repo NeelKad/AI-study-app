@@ -502,16 +502,43 @@ def save_note_alias():
 
 # --- STUDY TOOLS (UI) ---
 @app.route('/flashcards')
-@app.route('/flashcards/<int:note_id>')
 @login_required
 @trial_required
-def flashcards(note_id=None):
+def flashcards():
     note_content = None
-    if note_id:
-        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
-        if note:
-            note_content = note.content
+    # You can pass note_content if needed for generation
     return render_template('flashcards.html', note_content=note_content, user=current_user)
+
+@app.route('/review-today-flashcards')
+@login_required
+@trial_required
+def review_today_flashcards():
+    return render_template('review_today_flashcards.html', user=current_user)
+
+@app.route('/review-all-flashcards')
+@login_required
+@trial_required
+def review_all_flashcards():
+    return render_template('review_all_flashcards.html', user=current_user)
+
+@app.route('/api/flashcards/all', methods=['GET'])
+@login_required
+@trial_required
+def get_all_flashcards():
+    user_id = current_user.id
+    flashcards = (
+        Flashcard.query
+        .join(Note, Flashcard.note_id == Note.id)
+        .filter(Note.user_id == user_id)
+        .all()
+    )
+    result = [{
+        "id": card.id,
+        "term": card.term,
+        "definition": card.definition,
+        "due_date": card.due_date.isoformat(),
+    } for card in flashcards]
+    return jsonify(result)
 
 @app.route('/api/flashcards/due', methods=['GET'])
 @login_required
