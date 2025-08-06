@@ -144,6 +144,7 @@
   </main>
   <script>
     let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+    const noteId = {{ note_id }}; // <-- Add this line
     const generateBtn = document.getElementById("generateBtn");
     const loadingIndicator = document.getElementById("loadingIndicator");
     const errorMessage = document.getElementById("errorMessage");
@@ -161,7 +162,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             notes: noteContent, 
-            note_id: noteId // <-- add this line
+            note_id: noteId // <-- This now works!
           }),
         });
         if (!res.ok) throw new Error("Failed to generate flashcards.");
@@ -171,9 +172,10 @@
         loadingIndicator.style.display = "none";
         errorMessage.textContent = "Error: " + err.message;
       }
-      );
-  </script>
+    });
+</script>
 </body>
 </html>
+
 
 
