@@ -700,12 +700,12 @@ def api_questions_enhanced():
     prompt = (
         f"Generate {count} study questions from these notes. "
         f"Difficulty: {difficulty}. Subject: {subject}. "
-        f"Question types: {', '.join(types)}. "
+        f"ONLY use these question types: {', '.join(types)}. "
+        f"Do NOT include any other question types. "
         f"Focus topics: {', '.join(focus_topics) if focus_topics else 'none'}. "
         "For each question, provide a JSON object with: "
-        "question (string), type (multiple_choice (only 1 answer)/short_answer (make it so that they write at least 4 sentences)/calculation/true_false/essay/definition), "
-        "difficulty (string), topic (string), options (array, if MCQ), correctAnswer, rubric (if relevant). "
-        "Return a JSON array."
+        "question (string), type (must be one of the selected types), difficulty (string), topic (string), options (array, if MCQ), correctAnswer, rubric (if relevant). "
+        "Return a JSON array. Do NOT include any question type that is not in the list above."
         "\nNotes:\n" + notes
     )
 
