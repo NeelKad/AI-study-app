@@ -501,7 +501,7 @@ def save_note_alias():
     return add_note()
 
 # --- STUDY TOOLS (UI) ---
-@app.route('/flashcards')
+@app.route('/flashcards/<int:note_id>')
 @login_required
 @trial_required
 def flashcards():
@@ -509,13 +509,13 @@ def flashcards():
     # You can pass note_content if needed for generation
     return render_template('flashcards.html', note_content=note_content, user=current_user)
 
-@app.route('/review-today-flashcards')
+@app.route('/review-today-flashcards/<int:note_id>')
 @login_required
 @trial_required
 def review_today_flashcards():
     return render_template('review_today_flashcards.html', user=current_user)
 
-@app.route('/review-all-flashcards')
+@app.route('/review-all-flashcards/<int:note_id>')
 @login_required
 @trial_required
 def review_all_flashcards():
