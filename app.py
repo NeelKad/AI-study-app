@@ -703,7 +703,7 @@ def api_questions_enhanced():
         f"Question types: {', '.join(types)}. "
         f"Focus topics: {', '.join(focus_topics) if focus_topics else 'none'}. "
         "For each question, provide a JSON object with: "
-        "question (string), type (multiple_choice/short_answer/calculation/true_false/essay/definition), "
+        "question (string), type (multiple_choice (only 1 answer)/short_answer (make it so that they write at least 4 sentences)/calculation/true_false/essay/definition), "
         "difficulty (string), topic (string), options (array, if MCQ), correctAnswer, rubric (if relevant). "
         "Return a JSON array."
         "\nNotes:\n" + notes
@@ -783,8 +783,14 @@ def api_grade_question_enhanced():
         f"Difficulty: {difficulty}\n"
         f"Rubric: {rubric}\n"
         f"Notes: {notes}\n"
-        "Return a JSON object with: score (0-10), isCorrect (bool, if applicable), feedback (string), "
-        "improvement (string), modelAnswer (string), hints (string, optional)."
+        "Return a JSON object with these fields:\n"
+        "- score (0-10): number\n"
+        "- isCorrect (true/false): true if the user's answer matches the correct answer (for multiple_choice, true_false, calculation, definition types), otherwise false. For essay/short_answer, set true if the answer is mostly correct.\n"
+        "- feedback (string): assessment of the answer\n"
+        "- improvement (string): suggestion for improvement\n"
+        "- modelAnswer (string): ideal answer\n"
+        "- hints (string, optional): study tips\n"
+        "Be strict for auto-gradable types. For MCQ, true/false, calculation, and definition, compare exactly. For essay/short_answer, use rubric and similarity."
     )
 
     try:
