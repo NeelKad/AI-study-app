@@ -684,6 +684,52 @@ def api_questions():
     questions = [q.strip() for q in text.split('\n') if q.strip()]
     return jsonify(questions)
 
+@app.route('/api/questions/enhanced', methods=['POST'])
+@login_required
+@trial_required
+def api_questions_enhanced():
+    data = request.json
+    notes = data.get('notes', '')
+    count = int(data.get('count', 15))
+    difficulty = data.get('difficulty', 'intermediate')
+    subject = data.get('subject', 'auto')
+    types = data.get('types', ['multiple_choice', 'short_answer'])
+    focus_topics = data.get('focusTopics', [])
+
+    # Compose prompt for OpenAI
+    prompt = (
+        f"Generate {count} study questions from these notes. "
+        f"Difficulty: {difficulty}. Subject: {subject}. "
+        f"Question types: {', '.join(types)}. "
+        f"Focus topics: {', '.join(focus_topics) if focus_topics else 'none'}. "
+        "For each question, provide a JSON object with: "
+        "question (string), type (multiple_choice/short_answer/calculation/true_false/essay/definition), "
+        "difficulty (string), topic (string), options (array, if MCQ), correctAnswer, rubric (if relevant). "
+        "Return a JSON array."
+        "\nNotes:\n" + notes
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        ai_response = response.choices[0].message.content.strip()
+        # Extract JSON array from response
+        start_idx = ai_response.find('[')
+        end_idx = ai_response.rfind(']') + 1
+        if start_idx != -1 and end_idx != -1:
+            json_str = ai_response[start_idx:end_idx]
+            questions = json.loads(json_str)
+        else:
+            questions = []
+        return jsonify({"questions": questions})
+    except Exception as e:
+        app.logger.error(f"Enhanced question generation failed: {e}")
+        return jsonify({"questions": [], "error": str(e)}), 500
+
 @app.route('/api/grade_question', methods=['POST'])
 @login_required
 @trial_required
@@ -713,6 +759,54 @@ def api_grade_question():
         "improvement": improvement_match.group(1).strip() if improvement_match else "No suggestion.",
         "model_answer": model_answer_match.group(1).strip() if model_answer_match else "No model answer provided."
     })
+
+@app.route('/api/grade_question/enhanced', methods=['POST'])
+@login_required
+@trial_required
+def api_grade_question_enhanced():
+    data = request.json
+    question = data.get('question', '')
+    question_type = data.get('questionType', '')
+    user_answer = data.get('userAnswer', '')
+    correct_answer = data.get('correctAnswer', None)
+    notes = data.get('notes', '')
+    difficulty = data.get('difficulty', 'intermediate')
+    rubric = data.get('rubric', None)
+
+    # Compose grading prompt
+    prompt = (
+        f"Grade the following answer for the question below.\n"
+        f"Question: {question}\n"
+        f"Type: {question_type}\n"
+        f"User Answer: {user_answer}\n"
+        f"Correct Answer: {correct_answer}\n"
+        f"Difficulty: {difficulty}\n"
+        f"Rubric: {rubric}\n"
+        f"Notes: {notes}\n"
+        "Return a JSON object with: score (0-10), isCorrect (bool, if applicable), feedback (string), "
+        "improvement (string), modelAnswer (string), hints (string, optional)."
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=700
+        )
+        text = response.choices[0].message.content.strip()
+        # Extract JSON object from response
+        start_idx = text.find('{')
+        end_idx = text.rfind('}') + 1
+        if start_idx != -1 and end_idx != -1:
+            json_str = text[start_idx:end_idx]
+            grade_data = json.loads(json_str)
+        else:
+            grade_data = {}
+        return jsonify(grade_data)
+    except Exception as e:
+        app.logger.error(f"Enhanced grading failed: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/summarise', methods=['POST'])
 @login_required
@@ -790,7 +884,6 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 
 
 
