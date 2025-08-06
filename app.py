@@ -550,9 +550,10 @@ def review_flashcard(card_id):
     if not card:
         return jsonify({"error": "Flashcard not found"}), 404
 
-    # Call your update_flashcard function here
+    # Update spaced repetition stats
     update_flashcard(card, quality)
 
+    db.session.commit()
     return jsonify({"message": "Flashcard updated"}), 200
 
 
@@ -886,6 +887,39 @@ def tutor_chat():
     session.modified = True
 
     return jsonify({"reply": reply})
+
+
+def update_flashcard(card, quality):
+    """
+    Update flashcard stats using SM-2 algorithm.
+    quality: 0 (forgot), 1 (hard), 2 (medium), 3 (easy)
+    """
+    # Ensure minimum values
+    if card.repetitions is None:
+        card.repetitions = 0
+    if card.ease_factor is None:
+        card.ease_factor = 2.5
+    if card.interval is None:
+        card.interval = 1
+
+    # Quality: 0=forgot, 1=hard, 2=medium, 3=easy
+    if quality < 2:
+        card.repetitions = 0
+        card.interval = 1
+    else:
+        card.repetitions += 1
+        # SM-2 ease factor update
+        card.ease_factor = max(1.3, card.ease_factor + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02)))
+        # Interval calculation
+        if card.repetitions == 1:
+            card.interval = 1
+        elif card.repetitions == 2:
+            card.interval = 6
+        else:
+            card.interval = int(card.interval * card.ease_factor)
+    # Set next due date
+    card.due_date = datetime.utcnow().date() + timedelta(days=card.interval)
+    card.last_reviewed = datetime.utcnow()
 
 
 if __name__ == '__main__':
