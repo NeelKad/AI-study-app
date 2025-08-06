@@ -130,8 +130,8 @@
   <main style="padding: 2rem; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; align-items: center;">
     <h1 style="margin-bottom: 2rem; color: var(--accent);">Flashcards</h1>
     <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
-      <button class="button" onclick="window.location.href='{{ url_for('review_today_flashcards') }}'">📅 Review Today's Cards</button>
-      <button class="button button-secondary" onclick="window.location.href='{{ url_for('review_all_flashcards') }}'">📚 Review All Cards</button>
+      <button class="button" onclick="window.location.href='{{ url_for('review_today_flashcards', note_id=note_id) }}'">📅 Review Today's Cards</button>
+      <button class="button button-secondary" onclick="window.location.href='{{ url_for('review_all_flashcards', note_id=note_id) }}'">📚 Review All Cards</button>
       <button class="button" id="generateBtn" {% if not note_content %}disabled{% endif %}>⚡ Generate New Cards</button>
     </div>
     <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
@@ -172,3 +172,4 @@
   </script>
 </body>
 </html>
+
