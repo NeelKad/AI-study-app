@@ -556,16 +556,17 @@ def get_all_flashcards():
 @trial_required
 def get_due_flashcards():
     user_id = current_user.id
-    note_id = request.args.get('note_id', type=int)  # <-- add this line
+    note_id = request.args.get('note_id', type=int)
     today = datetime.utcnow().date()
 
     due_flashcards = (
         Flashcard.query
         .join(Note, Flashcard.note_id == Note.id)
-        .filter(Note.user_id == user_id, Flashcard.note_id == note_id)  # <-- add note_id filter
+        .filter(Note.user_id == user_id, Flashcard.note_id == note_id)
         .filter(Flashcard.due_date <= today)
         .all()
     )
+    print(f"DEBUG: note_id={note_id}, due_flashcards={len(due_flashcards)}")  # Add this line
 
     result = [{
         "id": card.id,
@@ -676,7 +677,13 @@ def api_flashcards():
             max_tokens=700
         )
         text = response.choices[0].message.content.strip()
-        flashcards = json.loads(text) if text else {}
+        print("RAW OPENAI RESPONSE:", text)  # Add this for debugging
+
+        # Only parse if response looks like JSON
+        if text and (text.startswith("{") or text.startswith("[")):
+            flashcards = json.loads(text)
+        else:
+            return jsonify({"error": "OpenAI did not return valid JSON", "raw": text}), 500
 
         # Optionally: Save flashcards to DB here
         # Example (if note_id is passed in JSON):
