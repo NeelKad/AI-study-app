@@ -110,7 +110,7 @@
       <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
         <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
         <div style="display: flex; gap: 1rem; align-items: center;">
-          <a href="{{ url_for('flashcards') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">← Back</a>
+          <a href="{{ url_for('flashcards', note_id=note_id) }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">← Back</a>
         </div>
       </div>
     </nav>
