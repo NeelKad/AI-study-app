@@ -536,10 +536,11 @@ def review_all_flashcards(note_id):
 @trial_required
 def get_all_flashcards():
     user_id = current_user.id
+    note_id = request.args.get('note_id', type=int)
     flashcards = (
         Flashcard.query
         .join(Note, Flashcard.note_id == Note.id)
-        .filter(Note.user_id == user_id)
+        .filter(Note.user_id == user_id, Flashcard.note_id == note_id)
         .all()
     )
     result = [{
