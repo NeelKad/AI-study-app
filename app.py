@@ -504,22 +504,32 @@ def save_note_alias():
 @app.route('/flashcards/<int:note_id>')
 @login_required
 @trial_required
-def flashcards():
-    note_content = None
-    # You can pass note_content if needed for generation
-    return render_template('flashcards.html', note_content=note_content, user=current_user)
+def flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('flashcards.html', note_content=note.content, note_id=note.id, user=current_user)
 
 @app.route('/review-today-flashcards/<int:note_id>')
 @login_required
 @trial_required
-def review_today_flashcards():
-    return render_template('review_today_flashcards.html', user=current_user)
+def review_today_flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('review_today_flashcards.html', note_id=note.id, user=current_user)
 
 @app.route('/review-all-flashcards/<int:note_id>')
 @login_required
 @trial_required
-def review_all_flashcards():
-    return render_template('review_all_flashcards.html', user=current_user)
+def review_all_flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('review_all_flashcards.html', note_id=note.id, user=current_user)
 
 @app.route('/api/flashcards/all', methods=['GET'])
 @login_required
