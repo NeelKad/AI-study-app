@@ -4,49 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flashcards - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   </head>
   <body>
     <!-- Navigation Header -->
     <header>
       <nav class="navbar">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-          "
-        >
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
           <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
           <div style="display: flex; gap: 1rem; align-items: center;">
-            <a
-              href="{{ url_for('dashboard') }}"
-              class="button button-secondary"
-              style="padding: 0.5rem 1rem; font-size: 0.8125rem;"
-              >← Dashboard</a
-            >
+            <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">← Dashboard</a>
           </div>
         </div>
       </nav>
     </header>
 
     <!-- Main Content -->
-    <main
-      style="
-        padding: 2rem;
-        max-width: 1000px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      "
-    >
+    <main style="padding: 2rem; max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; align-items: center;">
       <!-- Header Section -->
       <div style="margin-bottom: 1.5rem; text-align: center; width: 100%;">
         <h1 style="margin-bottom: 0.5rem; color: var(--accent);">Flashcards</h1>
@@ -67,81 +41,50 @@
       </button>
 
       <!-- Loading Indicator -->
-      <div
-        id="loadingIndicator"
-        style="display: none; text-align: center; margin: 2rem 0;"
-      >
-        <div
-          style="
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem;
-            background: var(--bg-secondary);
-            border-radius: 0.75rem;
-            border: 1px solid var(--bg-border);
-          "
-        >
+      <div id="loadingIndicator" style="display: none; text-align: center; margin: 2rem 0;">
+        <div style="display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: var(--bg-secondary); border-radius: 0.75rem; border: 1px solid var(--bg-border);">
           <div class="spinner"></div>
-          <span style="color: var(--text-secondary); font-weight: 500;"
-            >Loading flashcards...</span
-          >
+          <span style="color: var(--text-secondary); font-weight: 500;">Loading flashcards...</span>
         </div>
       </div>
 
       <!-- Error Message -->
-      <div
-        id="errorMessage"
-        style="color: var(--error); font-weight: 600; margin-bottom: 1rem;"
-      ></div>
+      <div id="errorMessage" style="color: var(--error); font-weight: 600; margin-bottom: 1rem;"></div>
 
       <!-- Flashcard Container -->
-      <div
-        style="margin-bottom: 2rem; width: 100%; max-width: 600px;"
-      >
-        <div
-          id="flashcard"
-          class="card"
-          style="
-            cursor: pointer;
-            padding: 3rem 2rem;
-            min-height: 250px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 1.25rem;
-            line-height: 1.5;
-            transition: all 0.2s ease;
-            user-select: none;
-            border: 2px solid transparent;
-          "
-        >
+      <div style="margin-bottom: 2rem; width: 100%; max-width: 600px;">
+        <div id="flashcard" class="card" style="cursor: pointer; padding: 3rem 2rem; min-height: 250px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 1.25rem; line-height: 1.5; transition: all 0.2s ease; user-select: none; border: 2px solid transparent;">
           No flashcards generated yet.
         </div>
       </div>
 
       <!-- Navigation Controls -->
-      <div
-        style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;"
-      >
-        <button id="prevBtn" class="button button-secondary" disabled>
-          ← Previous
-        </button>
-        <button id="nextBtn" class="button button-secondary" disabled>
-          Next →
-        </button>
+      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+        <button id="prevBtn" class="button button-secondary" disabled>← Previous</button>
+        <button id="nextBtn" class="button button-secondary" disabled>Next →</button>
       </div>
 
       <!-- Card Counter -->
-      <div
-        id="cardCounter"
-        style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;"
-      ></div>
+      <div id="cardCounter" style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;"></div>
+
+      <!-- Spaced Repetition Review Buttons -->
+      <div id="reviewControls" style="display: none; flex-direction: row; gap: 1rem; margin-bottom: 2rem;">
+        <button class="button" id="btnForgot" title="Forgot (Again)">😵 Forgot</button>
+        <button class="button" id="btnHard" title="Hard">😬 Hard</button>
+        <button class="button" id="btnMedium" title="Medium">🙂 Medium</button>
+        <button class="button" id="btnEasy" title="Easy">😎 Easy</button>
+      </div>
+
+      <!-- Due Flashcards Toggle -->
+      <div style="margin-bottom: 2rem;">
+        <label style="color: var(--text-secondary); font-size: 0.95rem;">
+          <input type="checkbox" id="showDueOnly" checked style="margin-right: 0.5rem;">
+          Show only due flashcards (spaced repetition)
+        </label>
+      </div>
     </main>
 
     <style>
-      /* Your existing styles */
       :root {
         --bg-primary: #0f0f23;
         --bg-secondary: #1a1a3a;
@@ -154,16 +97,13 @@
         --success: #10b981;
         --error: #ef4444;
         --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
-          0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
-          0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
       }
       body {
         background: var(--bg-primary);
         color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
-          sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         margin: 0;
         min-height: 100vh;
       }
@@ -227,12 +167,8 @@
         animation: spin 1s linear infinite;
       }
       @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
       #flashcard:hover {
         border-color: var(--accent);
@@ -257,6 +193,11 @@
       #cardCounter {
         color: var(--accent);
         font-weight: 600;
+      }
+      #reviewControls {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
       }
       @media (max-width: 768px) {
         .navbar {
@@ -285,11 +226,18 @@
       const errorMessage = document.getElementById("errorMessage");
       const generateBtn = document.getElementById("generateBtn");
       const cardCounter = document.getElementById("cardCounter");
+      const reviewControls = document.getElementById("reviewControls");
+      const btnForgot = document.getElementById("btnForgot");
+      const btnHard = document.getElementById("btnHard");
+      const btnMedium = document.getElementById("btnMedium");
+      const btnEasy = document.getElementById("btnEasy");
+      const showDueOnly = document.getElementById("showDueOnly");
 
       let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
       let flashcards = [];
       let currentIndex = 0;
       let showingDefinition = false;
+      let flashcardIds = []; // For spaced repetition
 
       function showLoading() {
         loadingIndicator.style.display = "block";
@@ -299,6 +247,7 @@
         nextBtn.disabled = true;
         flashcardDiv.textContent = "Loading flashcards...";
         flashcardDiv.classList.remove("flipped");
+        reviewControls.style.display = "none";
       }
 
       function hideLoading() {
@@ -320,6 +269,7 @@
           flashcardDiv.classList.remove("flipped");
           prevBtn.disabled = true;
           nextBtn.disabled = true;
+          reviewControls.style.display = "none";
           updateCardCounter();
           return;
         }
@@ -343,6 +293,13 @@
         prevBtn.disabled = currentIndex === 0;
         nextBtn.disabled = currentIndex === flashcards.length - 1;
         updateCardCounter();
+
+        // Show review controls if using spaced repetition
+        if (flashcardIds.length > 0 && flashcardIds[currentIndex] !== undefined) {
+          reviewControls.style.display = "flex";
+        } else {
+          reviewControls.style.display = "none";
+        }
       }
 
       flashcardDiv.addEventListener("click", () => {
@@ -398,8 +355,7 @@
 
       async function generateFlashcards() {
         if (!noteContent) {
-          errorMessage.textContent =
-            "No note content found! Please go back and select a note.";
+          errorMessage.textContent = "No note content found! Please go back and select a note.";
           return;
         }
 
@@ -421,10 +377,12 @@
             term,
             definition,
           }));
+          flashcardIds = []; // Not available for generated cards
 
           if (flashcards.length === 0) {
             flashcardDiv.textContent = "No flashcards generated from your notes.";
             flashcardDiv.classList.remove("flipped");
+            reviewControls.style.display = "none";
           } else {
             currentIndex = 0;
             showingDefinition = false;
@@ -435,13 +393,89 @@
           errorMessage.textContent = `Error: ${err.message}`;
           flashcardDiv.textContent = "";
           flashcardDiv.classList.remove("flipped");
+          reviewControls.style.display = "none";
         }
       }
 
+      async function loadDueFlashcards() {
+        showLoading();
+        try {
+          const res = await fetch("/api/flashcards/due", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          });
+          if (!res.ok) throw new Error("Failed to load due flashcards.");
+          const data = await res.json();
+          hideLoading();
+
+          flashcards = data.map(card => ({
+            term: card.term,
+            definition: card.definition,
+          }));
+          flashcardIds = data.map(card => card.id);
+
+          if (flashcards.length === 0) {
+            flashcardDiv.textContent = "No flashcards are due for review.";
+            flashcardDiv.classList.remove("flipped");
+            reviewControls.style.display = "none";
+          } else {
+            currentIndex = 0;
+            showingDefinition = false;
+            updateFlashcard();
+          }
+        } catch (err) {
+          hideLoading();
+          errorMessage.textContent = `Error: ${err.message}`;
+          flashcardDiv.textContent = "";
+          flashcardDiv.classList.remove("flipped");
+          reviewControls.style.display = "none";
+        }
+      }
+
+      // Spaced repetition review handler
+      async function reviewFlashcard(quality) {
+        if (flashcardIds.length === 0 || flashcardIds[currentIndex] === undefined) return;
+        const cardId = flashcardIds[currentIndex];
+        showLoading();
+        try {
+          const res = await fetch(`/api/flashcards/review/${cardId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quality }),
+          });
+          if (!res.ok) throw new Error("Failed to update flashcard review.");
+          // After review, reload due flashcards
+          await loadDueFlashcards();
+        } catch (err) {
+          hideLoading();
+          errorMessage.textContent = `Error: ${err.message}`;
+        }
+      }
+
+      btnForgot.addEventListener("click", () => reviewFlashcard(0));
+      btnHard.addEventListener("click", () => reviewFlashcard(1));
+      btnMedium.addEventListener("click", () => reviewFlashcard(2));
+      btnEasy.addEventListener("click", () => reviewFlashcard(3));
+
       generateBtn.addEventListener("click", generateFlashcards);
 
-      // Optionally, load flashcards on page load if you want:
-      // window.onload = generateFlashcards;
+      showDueOnly.addEventListener("change", function () {
+        if (showDueOnly.checked) {
+          loadDueFlashcards();
+        } else {
+          flashcardIds = [];
+          generateFlashcards();
+        }
+      });
+
+      // Load due flashcards by default
+      window.onload = function () {
+        if (showDueOnly.checked) {
+          loadDueFlashcards();
+        } else {
+          generateFlashcards();
+        }
+      };
     </script>
   </body>
 </html>
