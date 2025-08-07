@@ -1072,5 +1072,18 @@ def tutor_chat():
 
     return jsonify({"reply": reply})
 
+@app.route('/admin/fix-flashcards-schema')
+def fix_flashcards_schema():
+    from sqlalchemy import text
+    try:
+        db.session.execute(text("ALTER TABLE flashcards ADD COLUMN due_date DATE DEFAULT CURRENT_DATE;"))
+        db.session.execute(text("ALTER TABLE flashcards ADD COLUMN last_reviewed TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+        db.session.commit()
+        return "Schema updated!"
+    except Exception as e:
+        db.session.rollback()
+        return str(e)
+
 if __name__ == '__main__':
     app.run(debug=True)
+
