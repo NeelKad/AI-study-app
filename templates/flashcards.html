@@ -1,253 +1,412 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flashcards - AI Study App</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-    <style>
-      :root {
-        --bg-primary: #0f0f23;
-        --bg-secondary: #1a1a3a;
-        --bg-tertiary: #252547;
-        --bg-border: #3a3a5c;
-        --text-primary: #e2e8f0;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --accent: #6366f1;
-        --success: #10b981;
-        --error: #ef4444;
-        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
-          0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
-          0 4px 6px -4px rgb(0 0 0 / 0.1);
-      }
-      body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-          sans-serif;
-        margin: 0;
-        min-height: 100vh;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcards - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a3a;
+      --bg-tertiary: #252547;
+      --bg-border: #3a3a5c;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .navbar {
+      background: var(--bg-secondary);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--bg-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .nav-logo:hover {
+      color: var(--text-primary);
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--accent);
+      color: white;
+      gap: 0.5rem;
+    }
+
+    .button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .button-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--bg-border);
+    }
+
+    .button-secondary:hover {
+      background: var(--bg-border);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      border-color: var(--bg-border);
+    }
+
+    .button:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .main-container {
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 0;
+      text-align: center;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .stat-card {
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-due { color: var(--warning); }
+    .stat-total { color: var(--accent); }
+    .stat-new { color: var(--success); }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+    }
+
+    .action-button {
+      padding: 2rem;
+      text-align: center;
+      font-size: 1.125rem;
+      font-weight: 600;
+      text-decoration: none;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .action-icon {
+      font-size: 2.5rem;
+    }
+
+    .loading-container {
+      display: none;
+      text-align: center;
+      margin: 2rem 0;
+    }
+
+    .loading-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: 0.75rem;
+      border: 1px solid var(--bg-border);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--bg-border);
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .message {
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .message.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .message.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    @media (max-width: 768px) {
       .navbar {
-        background: var(--bg-secondary);
-        padding: 1rem 2rem;
-        border-bottom: 1px solid var(--bg-border);
+        padding: 1rem;
       }
-      .nav-logo {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--accent);
-        text-decoration: none;
-      }
-      .nav-logo:hover {
-        color: var(--text-primary);
+      .main-container {
+        padding: 1rem;
       }
       .button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
+        padding: 0.75rem 1rem;
         font-size: 0.875rem;
-        font-weight: 600;
-        text-decoration: none;
-        border-radius: 0.5rem;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: var(--accent);
-        color: white;
       }
-      .button:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
+      .page-title {
+        font-size: 2rem;
       }
-      .button-secondary {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-        border-color: var(--bg-border);
+      .action-grid {
+        grid-template-columns: 1fr;
       }
-      .button-secondary:hover {
-        background: var(--bg-border);
-      }
-      .card {
-        background: var(--bg-secondary);
-        border: 1px solid var(--bg-border);
-        border-radius: 0.75rem;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s ease;
-      }
-      .card:hover {
-        box-shadow: var(--shadow-md);
-      }
-      .spinner {
-        width: 20px;
-        height: 20px;
-        border: 2px solid var(--bg-border);
-        border-top: 2px solid var(--accent);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-      .button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: var(--bg-tertiary);
-        color: var(--text-muted);
-        border-color: var(--bg-border);
-      }
-      .button:disabled:hover {
-        transform: none;
-        box-shadow: none;
-      }
-      @media (max-width: 768px) {
-        .navbar {
-          padding: 1rem;
-        }
-        main {
-          padding: 1rem;
-        }
-        .button {
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <nav class="navbar">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-          "
-        >
-          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-          <div style="display: flex; gap: 1rem; align-items: center">
-            <a
-              href="{{ url_for('dashboard') }}"
-              class="button button-secondary"
-              style="padding: 0.5rem 1rem; font-size: 0.8125rem"
-              >← Dashboard</a
-            >
-          </div>
-        </div>
-      </nav>
-    </header>
-    <main
-      style="
-        padding: 2rem;
-        max-width: 600px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      "
-    >
-      <h1 style="margin-bottom: 2rem; color: var(--accent)">Flashcards</h1>
-      <div
-        style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%"
-      >
-        <button
-          class="button"
-          onclick="window.location.href='{{ url_for('review_today_flashcards', note_id=note_id) }}'"
-        >
-          📅 Review Today's Cards
-        </button>
-        <button
-          class="button button-secondary"
-          onclick="window.location.href='{{ url_for('review_all_flashcards', note_id=note_id) }}'"
-        >
-          📚 Review All Cards
-        </button>
-        <button
-          class="button"
-          id="generateBtn"
-          {%
-          if
-          not
-          note_content
-          %}disabled{%
-          endif
-          %}
-        >
-          ⚡ Generate New Cards
-        </button>
-      </div>
-      <div
-        id="loadingIndicator"
-        style="display: none; text-align: center; margin: 2rem 0"
-      >
-        <div
-          style="
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem;
-            background: var(--bg-secondary);
-            border-radius: 0.75rem;
-            border: 1px solid var(--bg-border);
-          "
-        >
-          <div class="spinner"></div>
-          <span style="color: var(--text-secondary); font-weight: 500"
-            >Generating flashcards...</span
-          >
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <div class="nav-content">
+        <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <a href="{{ url_for('dashboard') }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+            ← Dashboard
+          </a>
         </div>
       </div>
-      <div
-        id="errorMessage"
-        style="color: var(--error); font-weight: 600; margin-top: 1rem"
-      ></div>
-    </main>
-    <script>
-      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
-      const noteId = {{ note_id }}; // <-- Add this line
-      const generateBtn = document.getElementById("generateBtn");
-      const loadingIndicator = document.getElementById("loadingIndicator");
-      const errorMessage = document.getElementById("errorMessage");
+    </nav>
+  </header>
 
-      generateBtn?.addEventListener("click", async function() {
-        if (!noteContent) {
-          errorMessage.textContent = "No note content found!";
-          return;
+  <main class="main-container">
+    <h1 class="page-title">📚 Flashcards</h1>
+    
+    <div id="statsContainer" class="stats-grid" style="display: none;">
+      <div class="card stat-card">
+        <div id="statDue" class="stat-number stat-due">-</div>
+        <div class="stat-label">Due Today</div>
+      </div>
+      <div class="card stat-card">
+        <div id="statTotal" class="stat-number stat-total">-</div>
+        <div class="stat-label">Total Cards</div>
+      </div>
+      <div class="card stat-card">
+        <div id="statNew" class="stat-number stat-new">-</div>
+        <div class="stat-label">New Cards</div>
+      </div>
+    </div>
+
+    <div class="action-grid">
+      <a href="{{ url_for('review_today_flashcards', note_id=note_id) }}" class="card action-button">
+        <div class="action-icon">📅</div>
+        <div>Review Due Cards</div>
+        <div style="font-size: 0.875rem; color: var(--text-secondary);">Study cards scheduled for today</div>
+      </a>
+
+      <a href="{{ url_for('review_all_flashcards', note_id=note_id) }}" class="card action-button button-secondary">
+        <div class="action-icon">📖</div>
+        <div>Browse All Cards</div>
+        <div style="font-size: 0.875rem; color: var(--text-secondary);">View and review all flashcards</div>
+      </a>
+
+      <button 
+        class="card action-button" 
+        id="generateBtn" 
+        {% if not note_content %}disabled{% endif %}
+      >
+        <div class="action-icon">⚡</div>
+        <div>Generate New Cards</div>
+        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+          {% if note_content %}Create AI-powered flashcards{% else %}No note content available{% endif %}
+        </div>
+      </button>
+    </div>
+
+    <div id="loadingIndicator" class="loading-container">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <span style="color: var(--text-secondary); font-weight: 500;">
+          Generating flashcards...
+        </span>
+      </div>
+    </div>
+
+    <div id="messageContainer"></div>
+  </main>
+
+  <script>
+    const noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+    const noteId = {{ note_id }};
+    
+    const generateBtn = document.getElementById('generateBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const messageContainer = document.getElementById('messageContainer');
+    const statsContainer = document.getElementById('statsContainer');
+
+    function showMessage(text, type = 'info') {
+      messageContainer.innerHTML = `<div class="message ${type}">${text}</div>`;
+    }
+
+    function clearMessage() {
+      messageContainer.innerHTML = '';
+    }
+
+    async function loadStats() {
+      try {
+        const response = await fetch(`/api/flashcards/stats?note_id=${noteId}`);
+        if (response.ok) {
+          const stats = await response.json();
+          document.getElementById('statDue').textContent = stats.due;
+          document.getElementById('statTotal').textContent = stats.total;
+          document.getElementById('statNew').textContent = stats.new;
+          
+          if (stats.total > 0) {
+            statsContainer.style.display = 'grid';
+          }
         }
-        loadingIndicator.style.display = "block";
-        errorMessage.textContent = "";
-        try {
-          const res = await fetch("/api/flashcards", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              notes: noteContent,
-              note_id: noteId // <-- This now works!
-            }),
-          });
-          if (!res.ok) throw new Error("Failed to generate flashcards.");
-          loadingIndicator.style.display = "none";
-          errorMessage.textContent = "Flashcards generated! You can now review them.";
-        } catch (err) {
-          loadingIndicator.style.display = "none";
-          errorMessage.textContent = "Error: " + err.message;
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      }
+    }
+
+    generateBtn?.addEventListener('click', async function() {
+      if (!noteContent) {
+        showMessage('No note content found!', 'error');
+        return;
+      }
+
+      generateBtn.disabled = true;
+      loadingIndicator.style.display = 'block';
+      clearMessage();
+
+      try {
+        const response = await fetch('/api/flashcards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notes: noteContent,
+            note_id: noteId
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage(`Successfully generated ${data.count} flashcards! You can now review them.`, 'success');
+          loadStats(); // Refresh stats
+        } else {
+          showMessage(`Error: ${data.error}`, 'error');
         }
-      });
-    </script>
-  </body>
+      } catch (error) {
+        showMessage(`Error: ${error.message}`, 'error');
+      } finally {
+        generateBtn.disabled = false;
+        loadingIndicator.style.display = 'none';
+      }
+    });
+
+    // Load stats on page load
+    document.addEventListener('DOMContentLoaded', loadStats);
+  </script>
+</body>
 </html>
