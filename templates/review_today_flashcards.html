@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review Today's Flashcards - AI Study App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    :root {
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a3a;
+      --bg-tertiary: #252547;
+      --bg-border: #3a3a5c;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --success: #10b981;
+      --error: #ef4444;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .navbar {
+      background: var(--bg-secondary);
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--bg-border);
+    }
+    .nav-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .nav-logo:hover {
+      color: var(--text-primary);
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--accent);
+      color: white;
+    }
+    .button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .button-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border-color: var(--bg-border);
+    }
+    .button-secondary:hover {
+      background: var(--bg-border);
+    }
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--bg-border);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+    #reviewControls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      border-color: var(--bg-border);
+    }
+    .button:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 1rem;
+      }
+      main {
+        padding: 1rem;
+      }
+      .button {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+        <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <a href="{{ url_for('flashcards', note_id=note_id) }}" class="button button-secondary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">← Back</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <main style="padding: 2rem; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; align-items: center;">
+    <h1 style="margin-bottom: 2rem; color: var(--accent);">Review Today's Cards</h1>
+    <div id="flashcard" class="card" style="cursor: pointer; padding: 3rem 2rem; min-height: 250px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 1.25rem; line-height: 1.5; transition: all 0.2s ease; user-select: none; border: 2px solid transparent;">
+      Loading...
+    </div>
+    <div id="reviewControls" style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;">
+      <button class="button" id="btnForgot" title="Forgot (Again)">😵 Forgot</button>
+      <button class="button" id="btnHard" title="Hard">😬 Hard</button>
+      <button class="button" id="btnMedium" title="Medium">🙂 Medium</button>
+      <button class="button" id="btnEasy" title="Easy">😎 Easy</button>
+    </div>
+    <div id="cardCounter" style="text-align: center; color: var(--accent); font-weight: 600; margin-top: 1rem;"></div>
+  </main>
+  <script>
+    const flashcardDiv = document.getElementById("flashcard");
+    const btnForgot = document.getElementById("btnForgot");
+    const btnHard = document.getElementById("btnHard");
+    const btnMedium = document.getElementById("btnMedium");
+    const btnEasy = document.getElementById("btnEasy");
+    const cardCounter = document.getElementById("cardCounter");
+
+    let flashcards = [];
+    let flashcardIds = [];
+    let currentIndex = 0;
+    let showingDefinition = false;
+
+    async function loadDueFlashcards() {
+      flashcardDiv.textContent = "Loading...";
+      try {
+        const res = await fetch("/api/flashcards/due", { method: "GET" });
+        if (!res.ok) throw new Error("Failed to load due flashcards.");
+        const data = await res.json();
+        flashcards = data.map(card => ({ term: card.term, definition: card.definition }));
+        flashcardIds = data.map(card => card.id);
+        currentIndex = 0;
+        showingDefinition = false;
+        updateFlashcard();
+      } catch (err) {
+        flashcardDiv.textContent = "Error: " + err.message;
+      }
+    }
+
+    function updateFlashcard() {
+      if (flashcards.length === 0) {
+        flashcardDiv.textContent = "No flashcards are due for review.";
+        cardCounter.textContent = "";
+        return;
+      }
+      const card = flashcards[currentIndex];
+      flashcardDiv.textContent = showingDefinition ? card.definition : card.term;
+      cardCounter.textContent = `Card ${currentIndex + 1} of ${flashcards.length}`;
+    }
+
+    flashcardDiv.addEventListener("click", () => {
+      if (flashcards.length > 0) {
+        showingDefinition = !showingDefinition;
+        updateFlashcard();
+      }
+    });
+
+    async function reviewFlashcard(quality) {
+      if (flashcardIds.length === 0 || flashcardIds[currentIndex] === undefined) return;
+      const cardId = flashcardIds[currentIndex];
+      try {
+        await fetch(`/api/flashcards/review/${cardId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quality }),
+        });
+        // Remove card from list after review
+        flashcards.splice(currentIndex, 1);
+        flashcardIds.splice(currentIndex, 1);
+        if (currentIndex >= flashcards.length) currentIndex = Math.max(0, flashcards.length - 1);
+        showingDefinition = false;
+        updateFlashcard();
+      } catch (err) {
+        flashcardDiv.textContent = "Error: " + err.message;
+      }
+    }
+
+    btnForgot.addEventListener("click", () => reviewFlashcard(0));
+    btnHard.addEventListener("click", () => reviewFlashcard(1));
+    btnMedium.addEventListener("click", () => reviewFlashcard(2));
+    btnEasy.addEventListener("click", () => reviewFlashcard(3));
+
+    window.onload = loadDueFlashcards;
+  </script>
+</body>
+</html>
