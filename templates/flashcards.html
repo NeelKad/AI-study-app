@@ -8,140 +8,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
-  </head>
-  <body>
-    <!-- Navigation Header -->
-    <header>
-      <nav class="navbar">
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-          "
-        >
-          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
-          <div style="display: flex; gap: 1rem; align-items: center;">
-            <a
-              href="{{ url_for('dashboard') }}"
-              class="button button-secondary"
-              style="padding: 0.5rem 1rem; font-size: 0.8125rem;"
-              >← Dashboard</a
-            >
-          </div>
-        </div>
-      </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main
-      style="
-        padding: 2rem;
-        max-width: 1000px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      "
-    >
-      <!-- Header Section -->
-      <div style="margin-bottom: 1.5rem; text-align: center; width: 100%;">
-        <h1 style="margin-bottom: 0.5rem; color: var(--accent);">Flashcards</h1>
-        <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
-          Click on cards to flip between terms and definitions
-        </p>
-      </div>
-
-      <!-- Generate Flashcards Button -->
-      <button
-        id="generateBtn"
-        class="button"
-        style="margin-bottom: 2rem; max-width: 300px; width: 100%;"
-        {{ 'disabled' if not note_content }}
-        title="{{ 'No note content to generate flashcards from' if not note_content else '' }}"
-      >
-        Generate Flashcards
-      </button>
-
-      <!-- Loading Indicator -->
-      <div
-        id="loadingIndicator"
-        style="display: none; text-align: center; margin: 2rem 0;"
-      >
-        <div
-          style="
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem;
-            background: var(--bg-secondary);
-            border-radius: 0.75rem;
-            border: 1px solid var(--bg-border);
-          "
-        >
-          <div class="spinner"></div>
-          <span style="color: var(--text-secondary); font-weight: 500;"
-            >Loading flashcards...</span
-          >
-        </div>
-      </div>
-
-      <!-- Error Message -->
-      <div
-        id="errorMessage"
-        style="color: var(--error); font-weight: 600; margin-bottom: 1rem;"
-      ></div>
-
-      <!-- Flashcard Container -->
-      <div
-        style="margin-bottom: 2rem; width: 100%; max-width: 600px;"
-      >
-        <div
-          id="flashcard"
-          class="card"
-          style="
-            cursor: pointer;
-            padding: 3rem 2rem;
-            min-height: 250px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 1.25rem;
-            line-height: 1.5;
-            transition: all 0.2s ease;
-            user-select: none;
-            border: 2px solid transparent;
-          "
-        >
-          No flashcards generated yet.
-        </div>
-      </div>
-
-      <!-- Navigation Controls -->
-      <div
-        style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;"
-      >
-        <button id="prevBtn" class="button button-secondary" disabled>
-          ← Previous
-        </button>
-        <button id="nextBtn" class="button button-secondary" disabled>
-          Next →
-        </button>
-      </div>
-
-      <!-- Card Counter -->
-      <div
-        id="cardCounter"
-        style="text-align: center; color: var(--text-secondary); font-size: 0.875rem;"
-      ></div>
-    </main>
-
     <style>
-      /* Your existing styles */
       :root {
         --bg-primary: #0f0f23;
         --bg-secondary: #1a1a3a;
@@ -162,7 +29,7 @@
       body {
         background: var(--bg-primary);
         color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
           sans-serif;
         margin: 0;
         min-height: 100vh;
@@ -234,15 +101,6 @@
           transform: rotate(360deg);
         }
       }
-      #flashcard:hover {
-        border-color: var(--accent);
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-      }
-      #flashcard.flipped {
-        background: var(--bg-tertiary);
-        border-color: var(--success);
-      }
       .button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -254,10 +112,6 @@
         transform: none;
         box-shadow: none;
       }
-      #cardCounter {
-        color: var(--accent);
-        font-weight: 600;
-      }
       @media (max-width: 768px) {
         .navbar {
           padding: 1rem;
@@ -265,183 +119,135 @@
         main {
           padding: 1rem;
         }
-        #flashcard {
-          padding: 2rem 1.5rem;
-          min-height: 200px;
-          font-size: 1.125rem;
-        }
         .button {
           padding: 0.75rem 1rem;
           font-size: 0.875rem;
         }
       }
     </style>
-
+  </head>
+  <body>
+    <header>
+      <nav class="navbar">
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+          "
+        >
+          <a href="{{ url_for('index') }}" class="nav-logo">AI Study App</a>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <a
+              href="{{ url_for('dashboard') }}"
+              class="button button-secondary"
+              style="padding: 0.5rem 1rem; font-size: 0.8125rem"
+              >← Dashboard</a
+            >
+          </div>
+        </div>
+      </nav>
+    </header>
+    <main
+      style="
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      "
+    >
+      <h1 style="margin-bottom: 2rem; color: var(--accent)">Flashcards</h1>
+      <div
+        style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%"
+      >
+        <button
+          class="button"
+          onclick="window.location.href='{{ url_for('review_today_flashcards', note_id=note_id) }}'"
+        >
+          📅 Review Today's Cards
+        </button>
+        <button
+          class="button button-secondary"
+          onclick="window.location.href='{{ url_for('review_all_flashcards', note_id=note_id) }}'"
+        >
+          📚 Review All Cards
+        </button>
+        <button
+          class="button"
+          id="generateBtn"
+          {%
+          if
+          not
+          note_content
+          %}disabled{%
+          endif
+          %}
+        >
+          ⚡ Generate New Cards
+        </button>
+      </div>
+      <div
+        id="loadingIndicator"
+        style="display: none; text-align: center; margin: 2rem 0"
+      >
+        <div
+          style="
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            border: 1px solid var(--bg-border);
+          "
+        >
+          <div class="spinner"></div>
+          <span style="color: var(--text-secondary); font-weight: 500"
+            >Generating flashcards...</span
+          >
+        </div>
+      </div>
+      <div
+        id="errorMessage"
+        style="color: var(--error); font-weight: 600; margin-top: 1rem"
+      ></div>
+    </main>
     <script>
-      const flashcardDiv = document.getElementById("flashcard");
-      const prevBtn = document.getElementById("prevBtn");
-      const nextBtn = document.getElementById("nextBtn");
+      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
+      const noteId = {{ note_id }}; // <-- Add this line
+      const generateBtn = document.getElementById("generateBtn");
       const loadingIndicator = document.getElementById("loadingIndicator");
       const errorMessage = document.getElementById("errorMessage");
-      const generateBtn = document.getElementById("generateBtn");
-      const cardCounter = document.getElementById("cardCounter");
 
-      let noteContent = {% if note_content %}{{ note_content | tojson | safe }}{% else %}null{% endif %};
-      let flashcards = [];
-      let currentIndex = 0;
-      let showingDefinition = false;
-
-      function showLoading() {
+      generateBtn?.addEventListener("click", async function() {
+        if (!noteContent) {
+          errorMessage.textContent = "No note content found!";
+          return;
+        }
         loadingIndicator.style.display = "block";
         errorMessage.textContent = "";
-        generateBtn.disabled = true;
-        prevBtn.disabled = true;
-        nextBtn.disabled = true;
-        flashcardDiv.textContent = "Loading flashcards...";
-        flashcardDiv.classList.remove("flipped");
-      }
-
-      function hideLoading() {
-        loadingIndicator.style.display = "none";
-        generateBtn.disabled = false;
-      }
-
-      function updateCardCounter() {
-        if (flashcards.length > 0) {
-          cardCounter.textContent = `Card ${currentIndex + 1} of ${flashcards.length}`;
-        } else {
-          cardCounter.textContent = "";
-        }
-      }
-
-      function updateFlashcard() {
-        if (flashcards.length === 0) {
-          flashcardDiv.textContent = "No flashcards found.";
-          flashcardDiv.classList.remove("flipped");
-          prevBtn.disabled = true;
-          nextBtn.disabled = true;
-          updateCardCounter();
-          return;
-        }
-
-        const card = flashcards[currentIndex];
-
-        if (showingDefinition) {
-          flashcardDiv.textContent =
-            typeof card.definition === "string"
-              ? card.definition
-              : JSON.stringify(card.definition, null, 2);
-          flashcardDiv.classList.add("flipped");
-        } else {
-          flashcardDiv.textContent =
-            typeof card.term === "string"
-              ? card.term
-              : JSON.stringify(card.term);
-          flashcardDiv.classList.remove("flipped");
-        }
-
-        prevBtn.disabled = currentIndex === 0;
-        nextBtn.disabled = currentIndex === flashcards.length - 1;
-        updateCardCounter();
-      }
-
-      flashcardDiv.addEventListener("click", () => {
-        if (flashcards.length > 0) {
-          showingDefinition = !showingDefinition;
-          updateFlashcard();
-        }
-      });
-
-      prevBtn.addEventListener("click", () => {
-        if (currentIndex > 0) {
-          currentIndex--;
-          showingDefinition = false;
-          updateFlashcard();
-        }
-      });
-
-      nextBtn.addEventListener("click", () => {
-        if (currentIndex < flashcards.length - 1) {
-          currentIndex++;
-          showingDefinition = false;
-          updateFlashcard();
-        }
-      });
-
-      // Keyboard navigation
-      document.addEventListener("keydown", (e) => {
-        if (flashcards.length === 0) return;
-
-        switch (e.key) {
-          case "ArrowLeft":
-            if (currentIndex > 0) {
-              currentIndex--;
-              showingDefinition = false;
-              updateFlashcard();
-            }
-            break;
-          case "ArrowRight":
-            if (currentIndex < flashcards.length - 1) {
-              currentIndex++;
-              showingDefinition = false;
-              updateFlashcard();
-            }
-            break;
-          case " ":
-          case "Enter":
-            e.preventDefault();
-            showingDefinition = !showingDefinition;
-            updateFlashcard();
-            break;
-        }
-      });
-
-      async function generateFlashcards() {
-        if (!noteContent) {
-          errorMessage.textContent =
-            "No note content found! Please go back and select a note.";
-          return;
-        }
-
-        showLoading();
-
         try {
           const res = await fetch("/api/flashcards", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes: noteContent }),
+            body: JSON.stringify({
+              notes: noteContent,
+              note_id: noteId // <-- This now works!
+            }),
           });
-
           if (!res.ok) throw new Error("Failed to generate flashcards.");
-
-          const data = await res.json();
-          hideLoading();
-
-          flashcards = Object.entries(data).map(([term, definition]) => ({
-            term,
-            definition,
-          }));
-
-          if (flashcards.length === 0) {
-            flashcardDiv.textContent = "No flashcards generated from your notes.";
-            flashcardDiv.classList.remove("flipped");
-          } else {
-            currentIndex = 0;
-            showingDefinition = false;
-            updateFlashcard();
-          }
+          loadingIndicator.style.display = "none";
+          errorMessage.textContent = "Flashcards generated! You can now review them.";
         } catch (err) {
-          hideLoading();
-          errorMessage.textContent = `Error: ${err.message}`;
-          flashcardDiv.textContent = "";
-          flashcardDiv.classList.remove("flipped");
+          loadingIndicator.style.display = "none";
+          errorMessage.textContent = "Error: " + err.message;
         }
-      }
-
-      generateBtn.addEventListener("click", generateFlashcards);
-
-      // Optionally, load flashcards on page load if you want:
-      // window.onload = generateFlashcards;
+      });
     </script>
   </body>
 </html>
