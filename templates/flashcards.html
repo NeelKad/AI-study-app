@@ -409,7 +409,8 @@
           const res = await fetch("/api/flashcards", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notes: noteContent }),
+            body: JSON.stringify({ notes: noteContent, note_id: {{ note_id }} }),
+
           });
 
           if (!res.ok) throw new Error("Failed to generate flashcards.");
@@ -445,3 +446,4 @@
     </script>
   </body>
 </html>
+
