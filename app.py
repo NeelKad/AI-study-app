@@ -116,6 +116,7 @@ def load_user(user_id):
 @app.before_request
 def create_tables():
     db.create_all()
+    migrate_database()
 
 # --- DECORATOR ---
 def trial_required(f):
@@ -128,6 +129,96 @@ def trial_required(f):
             return redirect(url_for('trial_expired'))
         return f(*args, **kwargs)
     return decorated_function
+
+# Add this function to your app.py file, right after your model definitions
+
+def migrate_database():
+    """Auto-migrate database to handle schema changes"""
+    try:
+        # Check if flashcards table needs migration
+        inspector = db.inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if 'flashcards' not in tables:
+            # No flashcards table exists, create all tables
+            db.create_all()
+            print("✅ Database tables created")
+            return
+        
+        # Check existing columns
+        existing_columns = [col['name'] for col in inspector.get_columns('flashcards')]
+        
+        # Check if we need to migrate
+        required_columns = ['user_id', 'due_date', 'created_at']
+        missing_columns = [col for col in required_columns if col not in existing_columns]
+        
+        if not missing_columns:
+            # Table is already up to date
+            return
+            
+        print(f"Migrating flashcards table... Adding columns: {missing_columns}")
+        
+        # Determine database type
+        is_postgresql = 'postgresql' in str(db.engine.url)
+        
+        # Add missing columns
+        with db.engine.connect() as conn:
+            if 'user_id' in missing_columns:
+                if is_postgresql:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN user_id INTEGER'))
+                else:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN user_id INTEGER'))
+                    
+            if 'due_date' in missing_columns:
+                if is_postgresql:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN due_date DATE DEFAULT CURRENT_DATE'))
+                else:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN due_date DATE DEFAULT (date("now"))'))
+                    
+            if 'created_at' in missing_columns:
+                if is_postgresql:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
+                else:
+                    conn.execute(db.text('ALTER TABLE flashcards ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
+            
+            # Populate user_id for existing flashcards
+            if 'user_id' in missing_columns:
+                if is_postgresql:
+                    conn.execute(db.text('''
+                        UPDATE flashcards 
+                        SET user_id = notes.user_id 
+                        FROM notes 
+                        WHERE flashcards.note_id = notes.id 
+                        AND flashcards.user_id IS NULL
+                    '''))
+                else:
+                    conn.execute(db.text('''
+                        UPDATE flashcards 
+                        SET user_id = (
+                            SELECT notes.user_id 
+                            FROM notes 
+                            WHERE notes.id = flashcards.note_id
+                        )
+                        WHERE user_id IS NULL
+                    '''))
+            
+            # Set default values
+            conn.execute(db.text('UPDATE flashcards SET ease_factor = 2.5 WHERE ease_factor IS NULL'))
+            conn.execute(db.text('UPDATE flashcards SET interval = 1 WHERE interval IS NULL'))  
+            conn.execute(db.text('UPDATE flashcards SET repetitions = 0 WHERE repetitions IS NULL'))
+            
+            if is_postgresql:
+                conn.execute(db.text('UPDATE flashcards SET last_reviewed = CURRENT_TIMESTAMP WHERE last_reviewed IS NULL'))
+            else:
+                conn.execute(db.text('UPDATE flashcards SET last_reviewed = datetime("now") WHERE last_reviewed IS NULL'))
+            
+            conn.commit()
+            
+        print("✅ Flashcards table migration completed")
+        
+    except Exception as e:
+        print(f"❌ Migration failed: {e}")
+        print("Please run the manual migration script")
 
 # --- AI SCHEDULE GENERATION ---
 def generate_ai_study_schedule(user_notes):
@@ -1074,3 +1165,4 @@ def tutor_chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
