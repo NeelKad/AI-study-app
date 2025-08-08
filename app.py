@@ -93,16 +93,21 @@ class StudyScheduleItem(db.Model):
     note = db.relationship('Note', backref='schedule_items')
 
 class Flashcard(db.Model):
+    __tablename__ = 'flashcards'
     id = db.Column(db.Integer, primary_key=True)
     note_id = db.Column(db.Integer, db.ForeignKey('notes.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Add direct user reference for security
     term = db.Column(db.String, nullable=False)
     definition = db.Column(db.String, nullable=False)
     ease_factor = db.Column(db.Float, default=2.5)
     interval = db.Column(db.Integer, default=1)  # days
     repetitions = db.Column(db.Integer, default=0)
-    due_date = db.Column(db.Date, default=datetime.utcnow)
+    due_date = db.Column(db.Date, default=datetime.utcnow().date)
     last_reviewed = db.Column(db.DateTime, default=datetime.utcnow)
-
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    note = db.relationship('Note', backref='flashcards')
+    user = db.relationship('User', backref='flashcards')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -180,6 +185,42 @@ def generate_ai_study_schedule(user_notes):
     except Exception as e:
         print(f"Error generating AI schedule: {e}")
         return []
+
+# --- SPACED REPETITION ALGORITHM ---
+def update_flashcard_sm2(card, quality):
+    """
+    Update flashcard using SM-2 spaced repetition algorithm
+    quality: 0=forgot, 1=hard, 2=good, 3=easy
+    """
+    # Ensure minimum values
+    if card.repetitions is None:
+        card.repetitions = 0
+    if card.ease_factor is None:
+        card.ease_factor = 2.5
+    if card.interval is None:
+        card.interval = 1
+
+    # If quality < 2, reset the card
+    if quality < 2:
+        card.repetitions = 0
+        card.interval = 1
+    else:
+        card.repetitions += 1
+        
+        # Update ease factor
+        card.ease_factor = max(1.3, card.ease_factor + (0.1 - (3 - quality) * (0.08 + (3 - quality) * 0.02)))
+        
+        # Calculate new interval
+        if card.repetitions == 1:
+            card.interval = 1
+        elif card.repetitions == 2:
+            card.interval = 6
+        else:
+            card.interval = max(1, int(card.interval * card.ease_factor))
+
+    # Set next due date
+    card.due_date = datetime.utcnow().date() + timedelta(days=card.interval)
+    card.last_reviewed = datetime.utcnow()
 
 # --- SCHEDULE API ROUTES ---
 @app.route('/api/generate-schedule', methods=['POST'])
@@ -316,6 +357,145 @@ def api_delete_schedule_item(item_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+# --- FLASHCARD API ROUTES ---
+@app.route('/api/flashcards/all', methods=['GET'])
+@login_required
+@trial_required
+def get_all_flashcards():
+    """Get all flashcards for a note"""
+    note_id = request.args.get('note_id', type=int)
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    
+    # Verify note belongs to user
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({"error": "Note not found or access denied"}), 404
+    
+    flashcards = Flashcard.query.filter_by(
+        note_id=note_id, 
+        user_id=current_user.id
+    ).order_by(Flashcard.created_at.asc()).all()
+    
+    result = [{
+        "id": card.id,
+        "term": card.term,
+        "definition": card.definition,
+        "due_date": card.due_date.isoformat(),
+        "interval": card.interval,
+        "repetitions": card.repetitions,
+        "ease_factor": card.ease_factor
+    } for card in flashcards]
+    
+    return jsonify(result)
+
+@app.route('/api/flashcards/due', methods=['GET'])
+@login_required
+@trial_required
+def get_due_flashcards():
+    """Get flashcards due for review"""
+    note_id = request.args.get('note_id', type=int)
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    
+    # Verify note belongs to user
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({"error": "Note not found or access denied"}), 404
+    
+    today = datetime.utcnow().date()
+    
+    due_flashcards = Flashcard.query.filter_by(
+        note_id=note_id,
+        user_id=current_user.id
+    ).filter(Flashcard.due_date <= today).order_by(Flashcard.due_date.asc()).all()
+    
+    result = [{
+        "id": card.id,
+        "term": card.term,
+        "definition": card.definition,
+        "due_date": card.due_date.isoformat(),
+        "interval": card.interval,
+        "repetitions": card.repetitions
+    } for card in due_flashcards]
+    
+    return jsonify(result)
+
+@app.route('/api/flashcards/review/<int:card_id>', methods=['POST'])
+@login_required
+@trial_required
+def review_flashcard(card_id):
+    """Review a flashcard and update spaced repetition stats"""
+    try:
+        data = request.json
+        quality = data.get('quality', 0)  # 0=forgot, 1=hard, 2=good, 3=easy
+        
+        if quality not in [0, 1, 2, 3]:
+            return jsonify({"error": "Invalid quality score"}), 400
+        
+        # Get flashcard ensuring it belongs to current user
+        card = Flashcard.query.filter_by(
+            id=card_id, 
+            user_id=current_user.id
+        ).first()
+        
+        if not card:
+            return jsonify({"error": "Flashcard not found or access denied"}), 404
+        
+        # Update spaced repetition stats
+        update_flashcard_sm2(card, quality)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Flashcard reviewed successfully",
+            "next_due": card.due_date.isoformat(),
+            "interval": card.interval,
+            "repetitions": card.repetitions
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/flashcards/stats', methods=['GET'])
+@login_required
+@trial_required
+def get_flashcard_stats():
+    """Get flashcard statistics for a note"""
+    note_id = request.args.get('note_id', type=int)
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    
+    # Verify note belongs to user
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({"error": "Note not found or access denied"}), 404
+    
+    today = datetime.utcnow().date()
+    
+    total_cards = Flashcard.query.filter_by(
+        note_id=note_id,
+        user_id=current_user.id
+    ).count()
+    
+    due_cards = Flashcard.query.filter_by(
+        note_id=note_id,
+        user_id=current_user.id
+    ).filter(Flashcard.due_date <= today).count()
+    
+    new_cards = Flashcard.query.filter_by(
+        note_id=note_id,
+        user_id=current_user.id,
+        repetitions=0
+    ).count()
+    
+    return jsonify({
+        "total": total_cards,
+        "due": due_cards,
+        "new": new_cards,
+        "reviewed": total_cards - new_cards
+    })
 
 # --- AUTH ROUTES ---
 @app.route('/signup', methods=['GET', 'POST'])
@@ -469,7 +649,10 @@ def delete_note(note_id):
         if not note:
             return jsonify({"error": "Note not found or access denied"}), 404
         
-        # Also delete any schedule items related to this note
+        # Delete related flashcards first
+        Flashcard.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
+        # Delete any schedule items related to this note
         StudyScheduleItem.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
         
         db.session.delete(note)
@@ -501,60 +684,35 @@ def save_note_alias():
     return add_note()
 
 # --- STUDY TOOLS (UI) ---
-@app.route('/flashcards')
 @app.route('/flashcards/<int:note_id>')
 @login_required
 @trial_required
-def flashcards(note_id=None):
-    note_content = None
-    if note_id:
-        note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
-        if note:
-            note_content = note.content
-    return render_template('flashcards.html', note_content=note_content, user=current_user)
+def flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('flashcards.html', note_content=note.content, note_id=note.id, user=current_user)
 
-@app.route('/api/flashcards/due', methods=['GET'])
+@app.route('/review-today-flashcards/<int:note_id>')
 @login_required
 @trial_required
-def get_due_flashcards():
-    user_id = current_user.id
-    today = datetime.utcnow().date()
+def review_today_flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('review_today_flashcards.html', note_id=note.id, user=current_user)
 
-    due_flashcards = (
-        Flashcard.query
-        .join(Note, Flashcard.note_id == Note.id)
-        .filter(Note.user_id == user_id)
-        .filter(Flashcard.due_date <= today)
-        .all()
-    )
-
-    result = [{
-        "id": card.id,
-        "term": card.term,
-        "definition": card.definition,
-        "due_date": card.due_date.isoformat(),
-    } for card in due_flashcards]
-
-    return jsonify(result)
-
-
-
-@app.route('/api/flashcards/review/<int:card_id>', methods=['POST'])
+@app.route('/review-all-flashcards/<int:note_id>')
 @login_required
 @trial_required
-def review_flashcard(card_id):
-    data = request.json
-    quality = data.get('quality')  # expects 0,1,2,3
-
-    card = Flashcard.query.filter_by(id=card_id, user_id=current_user.id).first()
-    if not card:
-        return jsonify({"error": "Flashcard not found"}), 404
-
-    # Call your update_flashcard function here
-    update_flashcard(card, quality)
-
-    return jsonify({"message": "Flashcard updated"}), 200
-
+def review_all_flashcards(note_id):
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        flash("Note not found or access denied.", "error")
+        return redirect(url_for('dashboard'))
+    return render_template('review_all_flashcards.html', note_id=note.id, user=current_user)
 
 @app.route('/questions')
 @app.route('/questions/<int:note_id>')
@@ -616,9 +774,21 @@ def my_notes():
 @login_required
 @trial_required
 def api_flashcards():
-    notes = request.json.get('notes', '')
+    """Generate flashcards from notes and save them to database"""
+    data = request.json
+    notes = data.get('notes', '')
+    note_id = data.get('note_id')
+    
     if not notes:
         return jsonify({"error": "No notes provided"}), 400
+    
+    if not note_id:
+        return jsonify({"error": "Note ID required"}), 400
+    
+    # Verify note belongs to user
+    note = Note.query.filter_by(id=note_id, user_id=current_user.id).first()
+    if not note:
+        return jsonify({"error": "Note not found or access denied"}), 404
 
     try:
         response = client.chat.completions.create(
@@ -627,46 +797,62 @@ def api_flashcards():
                 {
                     "role": "user",
                     "content": (
-                        "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions."
+                        "Generate flashcards from these notes. Output a valid JSON object where keys are terms and values are definitions. "
+                        "Create 10-20 flashcards that cover the most important concepts. Make terms concise and definitions clear and complete."
                     )
                 },
                 {"role": "user", "content": notes}
             ],
             temperature=0.7,
-            max_tokens=700
+            max_tokens=1000
         )
+        
         text = response.choices[0].message.content.strip()
-        flashcards = json.loads(text) if text else {}
+        
+        # Extract JSON from response
+        start_idx = text.find('{')
+        end_idx = text.rfind('}') + 1
+        if start_idx != -1 and end_idx != -1:
+            json_str = text[start_idx:end_idx]
+            flashcards_data = json.loads(json_str)
+        else:
+            return jsonify({"error": "OpenAI did not return valid JSON", "raw": text}), 500
 
-        # Optionally: Save flashcards to DB here
-        # Example (if note_id is passed in JSON):
-        note_id = request.json.get('note_id')
-        if note_id:
-            for term, definition in flashcards.items():
-                # Check if flashcard already exists to avoid duplicates, or clear old ones
-                existing_card = Flashcard.query.filter_by(note_id=note_id, term=term, user_id=current_user.id).first()
-                if existing_card:
-                    existing_card.definition = definition
-                else:
-                    new_card = Flashcard(
-                        note_id=note_id,
-                        term=term,
-                        definition=definition,
-                        ease_factor=2.5,
-                        interval=1,
-                        repetitions=0,
-                        due_date=datetime.utcnow().date(),
-                        last_reviewed=datetime.utcnow()
-                    )
-                    db.session.add(new_card)
-            db.session.commit()
+        # Clear existing flashcards for this note
+        Flashcard.query.filter_by(note_id=note_id, user_id=current_user.id).delete()
+        
+        # Save new flashcards to database
+        saved_count = 0
+        for term, definition in flashcards_data.items():
+            if term.strip() and definition.strip():  # Only save non-empty cards
+                new_card = Flashcard(
+                    note_id=note_id,
+                    user_id=current_user.id,
+                    term=term.strip(),
+                    definition=definition.strip(),
+                    ease_factor=2.5,
+                    interval=1,
+                    repetitions=0,
+                    due_date=datetime.utcnow().date(),
+                    last_reviewed=datetime.utcnow()
+                )
+                db.session.add(new_card)
+                saved_count += 1
+        
+        db.session.commit()
+        return jsonify({
+            "message": f"Successfully generated {saved_count} flashcards",
+            "flashcards": flashcards_data,
+            "count": saved_count
+        })
 
+    except json.JSONDecodeError as e:
+        app.logger.error(f"JSON decode error: {e}")
+        return jsonify({"error": "Failed to parse AI response"}), 500
     except Exception as e:
+        db.session.rollback()
         app.logger.error(f"Flashcard generation failed: {e}")
         return jsonify({"error": "Failed to generate flashcards"}), 500
-
-    return jsonify(flashcards)
-
 
 @app.route('/api/questions', methods=['POST'])
 @login_required
@@ -850,7 +1036,6 @@ def api_pastpaper():
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return send_file(BytesIO(pdf_bytes), mimetype="application/pdf", as_attachment=True, download_name="past_paper.pdf")
 
-
 from flask import session
 
 @app.route("/api/tutor_chat", methods=["POST"])
@@ -887,11 +1072,5 @@ def tutor_chat():
 
     return jsonify({"reply": reply})
 
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
